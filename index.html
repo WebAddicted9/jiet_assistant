@@ -117,21 +117,27 @@
             /* slate-300 */
         }
 
-        /* Specific styles for the course card simulation */
+        /* Specific styles for the information card */
         .course-card {
-            background-color: #f8fafc; /* slate-50 */
+            /* Renamed from info-card for consistency with your existing styles */
+            background-color: #f8fafc;
+            /* slate-50 */
             border-radius: 12px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
             overflow: hidden;
-            margin-top: 1rem;
-            max-width: 400px; /* Adjust as needed */
+            margin-top: 0.5rem;
+            /* Adjusted margin to fit within message bubble */
+            max-width: 400px;
+            /* Adjust as needed */
         }
 
         .course-card-image {
             width: 100%;
-            height: 180px; /* Fixed height for consistency */
+            height: 180px;
+            /* Fixed height for consistency */
             object-fit: cover;
-            border-bottom: 1px solid #e2e8f0; /* slate-200 */
+            border-bottom: 1px solid #e2e8f0;
+            /* slate-200 */
         }
 
         .course-card-content {
@@ -142,39 +148,84 @@
             display: flex;
             gap: 0.75rem;
             padding: 1rem;
-            border-top: 1px solid #e2e8f0; /* slate-200 */
+            border-top: 1px solid #e2e8f0;
+            /* slate-200 */
         }
 
-        .course-card-buttons button, .course-card-buttons a {
+        .course-card-buttons button,
+        .course-card-buttons a {
             flex: 1;
             padding: 0.75rem 0.5rem;
             border-radius: 0.5rem;
             font-weight: 600;
             transition: all 0.2s ease-in-out;
             text-align: center;
-            text-decoration: none; /* For <a> tags */
-            display: inline-block; /* For <a> tags */
+            text-decoration: none;
+            /* For <a> tags */
+            display: inline-block;
+            /* For <a> tags */
         }
 
         .course-card-buttons .contact-btn {
-            background-color: #6366f1; /* indigo-500 */
+            background-color: #6366f1;
+            /* indigo-500 */
             color: white;
         }
 
         .course-card-buttons .contact-btn:hover {
-            background-color: #4f46e5; /* indigo-600 */
+            background-color: #4f46e5;
+            /* indigo-600 */
             transform: translateY(-1px);
         }
 
         .course-card-buttons .know-more-btn {
-            background-color: #e0e7ff; /* indigo-100 */
-            color: #4f46e5; /* indigo-600 */
-            border: 1px solid #c7d2fe; /* indigo-200 */
+            background-color: #e0e7ff;
+            /* indigo-100 */
+            color: #4f46e5;
+            /* indigo-600 */
+            border: 1px solid #c7d2fe;
+            /* indigo-200 */
         }
 
         .course-card-buttons .know-more-btn:hover {
-            background-color: #c7d2fe; /* indigo-200 */
+            background-color: #c7d2fe;
+            /* indigo-200 */
             transform: translateY(-1px);
+        }
+
+        /* Styles for quick reply chips */
+        .quick-reply-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            max-width: 85%;
+            /* Match chat bubble width */
+        }
+
+        .quick-reply-chip {
+            background-color: #e0e7ff;
+            /* indigo-100 */
+            color: #4f46e5;
+            /* indigo-600 */
+            padding: 0.6rem 1rem;
+            border-radius: 9999px;
+            /* Pill shape */
+            cursor: pointer;
+            font-size: 0.875rem;
+            /* text-sm */
+            font-weight: 500;
+            /* font-medium */
+            transition: all 0.2s ease-in-out;
+            border: 1px solid #c7d2fe;
+            /* indigo-200 */
+        }
+
+        .quick-reply-chip:hover {
+            background-color: #c7d2fe;
+            /* indigo-200 */
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
         }
     </style>
 </head>
@@ -237,6 +288,11 @@
         const sendButton = document.getElementById('send-button');
         let chatHistory = [];
 
+        // --- GLOBAL STATE FOR COURSE SELECTION ---
+        let currentCourseSelectionStage = null; // 'awaiting_course_type', 'awaiting_btech_specialization' etc.
+        let selectedCourseType = null; // Stores the main course, e.g., 'B.Tech'
+        let detectedUserLanguage = "english"; // Default language
+
         // --- KNOWLEDGE BASE ---
         const jietKnowledgeBase = `
         # JIET Universe: An In-Depth Institutional Analysis for Digital Integration
@@ -252,6 +308,7 @@
         - B.Des (4 Yrs): Fashion Design, Interior Design.
         - MBA (2 Yrs): Finance, HR, Marketing, Agri-Business, Business Intelligence.
         - MCA (2 Yrs): Full Stack Dev, AI, Machine Learning.
+        - M.Tech (2 Yrs): Various specializations.
         ## Section 3: Admissions (2025-26 Cycle)
         Admissions are primarily online. Selection is based on national/state entrance exams.
         - B.Tech: JEE Main or REAP. Eligibility: 10+2 with PCM (min. 45%).
@@ -319,37 +376,373 @@
         - **ROBOTIC CLUB:** An active club for students interested in robotics, automation, and mechatronics, conducting workshops on technologies like Arduino and organizing project competitions.
         `;
 
-        // Helper function to get a random element from an array
+        // Course Data for Quick Replies and detailed info
+        const courseData = {
+            "B.Tech": {
+                "english": {
+                    "intro": "B.Tech is a 4-year undergraduate engineering program. We offer the following specializations:",
+                    "fees": "~₹1,44,884 (1st Year)",
+                    "eligibility": "10+2 with PCM (min. 45%), JEE Main or REAP.",
+                    "placements": {
+                        "CSE": "~₹5.66 LPA (avg)",
+                        "AI & ML": "~₹5.35 LPA (avg)",
+                        "Data Science": "~₹5.21 LPA (avg)",
+                        "Cyber Security": "Similar to CSE/AI&ML (avg)",
+                        "ECE": "~₹4.15 LPA (avg)",
+                        "EE": "~₹4.15 LPA (avg)",
+                        "ME": "~₹4.6 LPA (avg)",
+                        "CE": "~₹4.6 LPA (avg)",
+                        "VLSI": "Emerging specialization, good prospects.",
+                        "Robotics": "Emerging specialization, good prospects."
+                    }
+                },
+                "hindi": {
+                    "intro": "बी.टेक 4 साल का अंडरग्रेजुएट इंजीनियरिंग प्रोग्राम है। हम निम्नलिखित विशेषज्ञताएँ प्रदान करते हैं:",
+                    "fees": "~₹1,44,884 (पहला साल)",
+                    "eligibility": "10+2 पीसीएम के साथ (न्यूनतम 45%), जेईई मेन या रीएपी।",
+                    "placements": {
+                        "CSE": "~₹5.66 LPA (औसत)",
+                        "AI & ML": "~₹5.35 LPA (औसत)",
+                        "Data Science": "~₹5.21 LPA (औसत)",
+                        "Cyber Security": "सीएसई/एआई और एमएल के समान (औसत)",
+                        "ECE": "~₹4.15 LPA (औसत)",
+                        "EE": "~₹4.15 LPA (औसत)",
+                        "ME": "~₹4.6 LPA (औसत)",
+                        "CE": "~₹4.6 LPA (औसत)",
+                        "VLSI": "उभरती हुई विशेषज्ञता, अच्छे अवसर।",
+                        "Robotics": "उभरती हुई विशेषज्ञता, अच्छे अवसर।"
+                    }
+                },
+                "hinglish": {
+                    "intro": "B.Tech ek 4 saal ka undergraduate engineering program hai. Hum ye specializations offer karte hain:",
+                    "fees": "~₹1,44,884 (1st Year)",
+                    "eligibility": "10+2 with PCM (min. 45%), JEE Main ya REAP.",
+                    "placements": {
+                        "CSE": "~₹5.66 LPA (avg)",
+                        "AI & ML": "~₹5.35 LPA (avg)",
+                        "Data Science": "~₹5.21 LPA (avg)",
+                        "Cyber Security": "CSE/AI&ML ke jaisa (avg)",
+                        "ECE": "~₹4.15 LPA (avg)",
+                        "EE": "~₹4.15 LPA (avg)",
+                        "ME": "~₹4.6 LPA (avg)",
+                        "CE": "~₹4.6 LPA (avg)",
+                        "VLSI": "Emerging specialization hai, ache prospects hain.",
+                        "Robotics": "Emerging specialization hai, ache prospects hain."
+                    }
+                },
+                "specializations": ["CSE", "AI & ML", "Data Science", "Cyber Security", "ECE", "EE", "ME", "CE", "VLSI", "Robotics", "Lateral Entry"]
+            },
+            "MBA": {
+                "english": {
+                    "intro": "MBA is a 2-year postgraduate program. Specializations include Finance, HR, Marketing, Agri-Business, and Business Intelligence.",
+                    "fees": "~₹1,27,206 (1st Year)",
+                    "eligibility": "Graduation (min. 50%), CAT / MAT / XAT / CMAT / ATMA.",
+                    "placements": "~₹5.32 LPA (avg)"
+                },
+                "hindi": {
+                    "intro": "एमबीए 2 साल का पोस्टग्रेजुएट प्रोग्राम है। विशेषज्ञता में वित्त, मानव संसाधन, विपणन, कृषि-व्यवसाय और व्यावसायिक बुद्धिमत्ता शामिल हैं।",
+                    "fees": "~₹1,27,206 (पहला साल)",
+                    "eligibility": "स्नातक (न्यूनतम 50%), कैट / मैट / एक्सएटी / सीमैट / आत्मा।",
+                    "placements": "~₹5.32 LPA (औसत)"
+                },
+                "hinglish": {
+                    "intro": "MBA ek 2 saal ka postgraduate program hai. Specializations mein Finance, HR, Marketing, Agri-Business, aur Business Intelligence shamil hain.",
+                    "fees": "~₹1,27,206 (1st Year)",
+                    "eligibility": "Graduation (min. 50%), CAT / MAT / XAT / CMAT / ATMA.",
+                    "placements": "~₹5.32 LPA (avg)"
+                }
+            },
+            "MCA": {
+                "english": {
+                    "intro": "MCA is a 2-year postgraduate program. Specializations include Full Stack Dev, AI, and Machine Learning.",
+                    "fees": "~₹1,27,206 (1st Year)",
+                    "eligibility": "Graduation (min. 50%).",
+                    "placements": "Strong placements, especially in AI/ML."
+                },
+                "hindi": {
+                    "intro": "एमसीए 2 साल का पोस्टग्रेजुएट प्रोग्राम है। विशेषज्ञता में फुल स्टैक देव, एआई और मशीन लर्निंग शामिल हैं।",
+                    "fees": "~₹1,27,206 (पहला साल)",
+                    "eligibility": "स्नातक (न्यूनतम 50%)।",
+                    "placements": "मजबूत प्लेसमेंट, विशेष रूप से एआई/एमएल में।"
+                },
+                "hinglish": {
+                    "intro": "MCA ek 2 saal ka postgraduate program hai. Specializations mein Full Stack Dev, AI, aur Machine Learning shamil hain.",
+                    "fees": "~₹1,27,206 (1st Year)",
+                    "eligibility": "Graduation (min. 50%).",
+                    "placements": "Strong placements hain, specially AI/ML mein."
+                }
+            },
+            "MBBS": {
+                "english": {
+                    "intro": "MBBS is a 5.5-year medical program at JIET Medical College & Hospital.",
+                    "fees": "Please refer to the official medical college website for detailed fee structure as it varies.",
+                    "eligibility": "NEET UG."
+                },
+                "hindi": {
+                    "intro": "एमबीबीएस JIET मेडिकल कॉलेज और अस्पताल में 5.5 साल का मेडिकल प्रोग्राम है।",
+                    "fees": "विस्तृत शुल्क संरचना के लिए कृपया आधिकारिक मेडिकल कॉलेज वेबसाइट देखें क्योंकि यह अलग-अलग होती है।",
+                    "eligibility": "नीट यूजी।"
+                },
+                "hinglish": {
+                    "intro": "MBBS ek 5.5 saal ka medical program hai JIET Medical College & Hospital mein.",
+                    "fees": "Detailed fees ke liye please official medical college website check karein kyunki yeh vary karta hai.",
+                    "eligibility": "NEET UG."
+                }
+            },
+            "B.Des": {
+                "english": {
+                    "intro": "B.Des (Bachelor of Design) is a 4-year program with specializations in Fashion Design and Interior Design.",
+                    "fees": "Approx. ₹85,900 (1st Year)", // Placeholder, adjust if specific B.Des fees are available
+                    "eligibility": "10+2 with min. 60%."
+                },
+                "hindi": {
+                    "intro": "बी.डेस (बैचलर ऑफ डिजाइन) फैशन डिजाइन और इंटीरियर डिजाइन में विशेषज्ञता के साथ 4 साल का कार्यक्रम है।",
+                    "fees": "लगभग ₹85,900 (पहला साल)",
+                    "eligibility": "10+2 न्यूनतम 60% के साथ।"
+                },
+                "hinglish": {
+                    "intro": "B.Des (Bachelor of Design) ek 4 saal ka program hai Fashion Design aur Interior Design specializations ke saath.",
+                    "fees": "Approx. ₹85,900 (1st Year)",
+                    "eligibility": "10+2 with min. 60%."
+                }
+            },
+            "M.Tech": {
+                "english": {
+                    "intro": "M.Tech is a 2-year postgraduate program. All admitted M.Tech students receive a ₹25,000 scholarship for both years.",
+                    "fees": "Please contact the admissions office for specific M.Tech fees.",
+                    "eligibility": "Relevant B.Tech degree."
+                },
+                "hindi": {
+                    "intro": "एम.टेक 2 साल का पोस्टग्रेजुएट प्रोग्राम है। सभी प्रवेश प्राप्त एम.टेक छात्रों को दोनों वर्षों के लिए ₹25,000 की छात्रवृत्ति मिलती है।",
+                    "fees": "विशिष्ट एम.टेक शुल्क के लिए प्रवेश कार्यालय से संपर्क करें।",
+                    "eligibility": "संबंधित बी.टेक डिग्री।"
+                },
+                "hinglish": {
+                    "intro": "M.Tech ek 2 saal ka postgraduate program hai. Sabhi admitted M.Tech students ko dono saalon ke liye ₹25,000 scholarship." ,
+                    "fees": "M.Tech ki specific fees ke liye admissions office se contact karein.",
+                    "eligibility": "Relevant B.Tech degree."
+                }
+            },
+            "BBA": {
+                "english": {
+                    "intro": "BBA (Bachelor of Business Administration) is a popular undergraduate program.",
+                    "fees": "~₹85,900 (1st Year)",
+                    "eligibility": "10+2 with min. 60%."
+                },
+                "hindi": {
+                    "intro": "बीबीए (बैचलर ऑफ बिजनेस एडमिनिस्ट्रेशन) एक लोकप्रिय स्नातक कार्यक्रम है।",
+                    "fees": "~₹85,900 (पहला साल)",
+                    "eligibility": "10+2 न्यूनतम 60% के साथ।"
+                },
+                "hinglish": {
+                    "intro": "BBA (Bachelor of Business Administration) ek popular undergraduate program hai.",
+                    "fees": "~₹85,900 (1st Year)",
+                    "eligibility": "10+2 with min. 60%."
+                }
+            },
+            "BCA": {
+                "english": {
+                    "intro": "BCA (Bachelor of Computer Applications) is an undergraduate program focused on computer applications.",
+                    "fees": "~₹85,900 (1st Year)",
+                    "eligibility": "10+2 with min. 60%."
+                },
+                "hindi": {
+                    "intro": "बीसीए (बैचलर ऑफ कंप्यूटर एप्लीकेशन) कंप्यूटर एप्लीकेशन पर केंद्रित एक स्नातक कार्यक्रम है।",
+                    "fees": "~₹85,900 (पहला साल)",
+                    "eligibility": "10+2 न्यूनतम 60% के साथ।"
+                },
+                "hinglish": {
+                    "intro": "BCA (Bachelor of Computer Applications) ek undergraduate program hai jo computer applications par focus karta hai.",
+                    "fees": "~₹85,900 (1st Year)",
+                    "eligibility": "10+2 with min. 60%."
+                }
+            },
+            "B.Sc (H&HA)": {
+                "english": {
+                    "intro": "B.Sc in Hospitality & Hotel Administration (H&HA) is offered at Jodhpur Institute of Hotel Management (JIHM).",
+                    "fees": "Please contact JIHM for specific fees.",
+                    "eligibility": "10+2 with min. 60%."
+                },
+                "hindi": {
+                    "intro": "बी.एससी हॉस्पिटैलिटी एंड होटल एडमिनिस्ट्रेशन (H&HA) जोधपुर इंस्टीट्यूट ऑफ होटल मैनेजमेंट (JIHM) में पेश किया जाता है।",
+                    "fees": "विशिष्ट शुल्क के लिए JIHM से संपर्क करें।",
+                    "eligibility": "10+2 न्यूनतम 60% के साथ।"
+                },
+                "hinglish": {
+                    "intro": "B.Sc in Hospitality & Hotel Administration (H&HA) Jodhpur Institute of Hotel Management (JIHM) mein offer kiya jata hai.",
+                    "fees": "Specific fees ke liye JIHM se contact karein.",
+                    "eligibility": "10+2 with min. 60%."
+                }
+            },
+            "Diploma": {
+                "english": {
+                    "intro": "JIET also offers various Diploma programs. Please visit the official website or contact admissions for details.",
+                    "fees": "Varies by program.",
+                    "eligibility": "Varies by program."
+                },
+                "hindi": {
+                    "intro": "JIET विभिन्न डिप्लोमा कार्यक्रम भी प्रदान करता है। विवरण के लिए कृपया आधिकारिक वेबसाइट पर जाएं या प्रवेश कार्यालय से संपर्क करें।",
+                    "fees": "कार्यक्रम के अनुसार भिन्न होता है।",
+                    "eligibility": "कार्यक्रम के अनुसार भिन्न होता है।"
+                },
+                "hinglish": {
+                    "intro": "JIET kai Diploma programs bhi offer karta hai. Details ke liye official website visit karein ya admissions contact karein.",
+                    "fees": "Program ke hisab se vary karta hai.",
+                    "eligibility": "Program ke hisab se vary karta hai."
+                }
+            },
+            "Doctoral": {
+                "english": {
+                    "intro": "JIET offers Doctoral (Ph.D.) programs. For specific details on specializations, eligibility, and admission process, please contact the research department.",
+                    "fees": "Varies by program.",
+                    "eligibility": "Varies by program."
+                },
+                "hindi": {
+                    "intro": "JIET डॉक्टरेट (पीएच.डी.) कार्यक्रम प्रदान करता है। विशेषज्ञताओं, पात्रता और प्रवेश प्रक्रिया के विशिष्ट विवरण के लिए, कृपया अनुसंधान विभाग से संपर्क करें।",
+                    "fees": "कार्यक्रम के अनुसार भिन्न होता है।",
+                    "eligibility": "कार्यक्रम के अनुसार भिन्न होता है।"
+                },
+                "hinglish": {
+                    "intro": "JIET Doctoral (Ph.D.) programs offer karta hai. Specializations, eligibility, aur admission process ke detailed info ke liye, please research department se contact karein.",
+                    "fees": "Program ke hisab se vary karta hai.",
+                    "eligibility": "Program ke hisab se vary karta hai."
+                }
+            }
+        };
+
+        const mainCourseTypes = ["B.Tech", "MBA", "MCA", "MBBS", "B.Des", "M.Tech", "BBA", "BCA", "B.Sc (H&HA)", "Diploma", "Doctoral"];
+
+        // --- NEW: JIET Card Data ---
+        const jietCardData = {
+            "courses": {
+                "english": {
+                    // FIX: Changed imageUrl to a working link
+                    imageUrl: "images/course.webp", // Corrected image URL
+                    title: "Courses Offered at JIET",
+                    description: "Hey there! We offer a variety of programs at JIET Universe, from undergraduate to doctoral degrees. Which type of course are you interested in? You can select from the options below:",
+                    button1Text: "Contact Details",
+                    button1Link: "tel:+919773378530",
+                    button2Text: "Know More",
+                    button2Link: "https://www.jietjodhpur.ac.in/academics/courses"
+                },
+                "hindi": {
+                    // FIX: Changed imageUrl to a working link
+                    imageUrl: "images/course.webp", // Corrected image URL
+                    title: "JIET में उपलब्ध पाठ्यक्रम",
+                    description: "नमस्ते! हम JIET यूनिवर्स में स्नातक से डॉक्टरेट तक कई तरह के कार्यक्रम पेश करते हैं। आप किस प्रकार के पाठ्यक्रम में रुचि रखते हैं? आप नीचे दिए गए विकल्पों में से चुन सकते हैं:",
+                    button1Text: "संपर्क विवरण",
+                    button1Link: "tel:+919773378530",
+                    button2Text: "अधिक जानें",
+                    button2Link: "https://www.jietjodhpur.ac.in/academics/courses"
+                },
+                "hinglish": {
+                    // FIX: Changed imageUrl to a working link
+                    imageUrl: "images/course.webp", // Corrected image URL
+                    title: "JIET mein Courses Available",
+                    description: "Hey there! Hum JIET Universe mein undergraduate se doctoral tak kayi tarah ke programs offer karte hain. Aap kis type ke course mein interested ho? Neeche diye gaye options mein se select kar sakte ho:",
+                    button1Text: "Contact Details",
+                    button1Link: "tel:+919773378530",
+                    button2Text: "Know More",
+                    button2Link: "https://www.jietjodhpur.ac.in/academics/courses"
+                }
+            },
+            "placements": {
+                "english": {
+                    imageUrl: "https://www.jietjodhpur.ac.in/assets/images/placement_img.jpg", // Example: Replace with an actual placement image URL from JIET
+                    title: "JIET Placements & Career Opportunities",
+                    description: "JIET's Career Development Cell (CDC) is very active in ensuring great placement opportunities for our students. For more details, you can view our placement report or contact the CDC.",
+                    button1Text: "Contact CDC",
+                    button1Link: "tel:+91-9876543210", // Example: Replace with actual CDC contact
+                    button2Text: "View Placement Report",
+                    button2Link: "https://www.jietjodhpur.ac.in/placements" // Example: Replace with actual placement report link
+                },
+                "hindi": {
+                    imageUrl: "https://www.jietjodhpur.ac.in/assets/images/placement_img.jpg",
+                    title: "JIET प्लेसमेंट और करियर के अवसर",
+                    description: "JIET का करियर डेवलपमेंट सेल (सीडीसी) हमारे छात्रों के लिए बेहतरीन प्लेसमेंट के अवसर सुनिश्चित करने में बहुत सक्रिय है। अधिक जानकारी के लिए, आप हमारी प्लेसमेंट रिपोर्ट देख सकते हैं या सीडीसी से संपर्क कर सकते हैं।",
+                    button1Text: "सीडीसी से संपर्क करें",
+                    button1Link: "tel:+91-9876543210",
+                    button2Text: "प्लेसमेंट रिपोर्ट देखें",
+                    button2Link: "https://www.jietjodhpur.ac.in/placements"
+                },
+                "hinglish": {
+                    imageUrl: "https://www.jietjodhpur.ac.in/assets/images/placement_img.jpg",
+                    title: "JIET Placements aur Career Opportunities",
+                    description: "JIET ka Career Development Cell (CDC) hamare students ke liye awesome placement opportunities ensure karne mein bohot active hai. Aur details ke liye, aap hamari placement report dekh sakte ho ya CDC ko contact kar sakte ho.",
+                    button1Text: "CDC se Contact karein",
+                    button1Link: "tel:+91-9876543210",
+                    button2Text: "Placement Report Dekhein",
+                    button2Link: "https://www.jietjodhpur.ac.in/placements"
+                }
+            },
+            "fees": {
+                "english": {
+                    imageUrl: "https://www.jietjodhpur.ac.in/assets/images/fee_structure.jpg", // Example: Replace with an actual fees image URL from JIET
+                    title: "JIET Fee Structure & Scholarships",
+                    description: "Understanding fees and scholarships is important. You can find detailed information on JIET's fee structure for various programs and available scholarship programs on our website.",
+                    button1Text: "Contact Admissions",
+                    button1Link: "tel:+919773378530",
+                    button2Text: "View Fee Details",
+                    button2Link: "https://www.jietjodhpur.ac.in/admissions/fees"
+                },
+                "hindi": {
+                    imageUrl: "https://www.jietjodhpur.ac.in/assets/images/fee_structure.jpg",
+                    title: "JIET शुल्क संरचना और छात्रवृत्तियां",
+                    description: "शुल्क और छात्रवृत्ति को समझना महत्वपूर्ण है। आप विभिन्न कार्यक्रमों के लिए JIET की शुल्क संरचना और हमारी वेबसाइट पर उपलब्ध छात्रवृत्ति कार्यक्रमों पर विस्तृत जानकारी प्राप्त कर सकते हैं।",
+                    button1Text: "प्रवेश से संपर्क करें",
+                    button1Link: "tel:+919773378530",
+                    button2Text: "शुल्क विवरण देखें",
+                    button2Link: "https://www.jietjodhpur.ac.in/admissions/fees"
+                },
+                "hinglish": {
+                    imageUrl: "https://www.jietjodhpur.ac.in/assets/images/fee_structure.jpg",
+                    title: "JIET Fees aur Scholarships",
+                    description: "Fees aur scholarships ko samajhna important hai. Aap JIET ke various programs ki detailed fee structure aur available scholarship programs hamari website par dekh sakte hain.",
+                    button1Text: "Admissions ko Contact karein",
+                    button1Link: "tel:+919773378530",
+                    button2Text: "Fee Details Dekhein",
+                    button2Link: "https://www.jietjodhpur.ac.in/admissions/fees"
+                }
+            }
+            // Add other categories here as needed for other info cards
+        };
+
+
+        /**
+         * Helper function to get a random element from an array
+         * @param {Array} arr - The array to pick a random element from.
+         * @returns {*} A random element from the array.
+         */
         function getRandomElement(arr) {
             return arr[Math.floor(Math.random() * arr.length)];
         }
 
-        // --- Language Detection Function ---
+        /**
+         * Detects the language of the input text (English, Hindi, or Hinglish).
+         * @param {string} text - The input text from the user.
+         * @returns {string} 'english', 'hindi', or 'hinglish'.
+         */
         function detectLanguage(text) {
             const lowerText = text.toLowerCase();
             let englishWordCount = 0;
             let hindiWordCount = 0;
-            const words = lowerText.split(/\s+/).filter(word => word.length > 0); // Split by whitespace to get words
+            const words = lowerText.split(/\s+/).filter(word => word.length > 0);
 
-            // Check for presence of Devanagari characters
             const hasHindiChars = /[\u0900-\u097F]/.test(text);
 
-            // Keywords that are typically written in English even in Hinglish contexts
             const commonEnglishKeywords = [
                 "jiet", "admission", "fees", "courses", "placement", "campus", "college",
                 "university", "btech", "mba", "mca", "bdes", "mbbs", "hostel", "scholarship",
-                "eligibility", "exam", "program", "department", "degree", "branch", "cutoff"
+                "eligibility", "exam", "program", "department", "degree", "branch", "cutoff", "what", "how", "when", "where", "which"
             ];
 
-            // Keywords that are typically Hindi/Hinglish
             const hindiHinglishKeywords = [
                 "mujhe", "jaan na", "hain", "hai", "kya", "kaise", "kab", "kahan", "kitna",
                 "chahiye", "batao", "bataiye", "aur", "kitne", "log", "pata", "mil jayega",
                 "karwana hai", "bhare", "aayega", "baare mein", "puchna", "chahie", "ka", "ki", "me", "main", "ko",
-                "karna", "hua", "hu", "hoon"
+                "karna", "hua", "hu", "hoon", "kyu", "kis", "kon"
             ];
 
-            // Count English and Hindi/Hinglish words based on distinct sets
             words.forEach(word => {
                 if (commonEnglishKeywords.includes(word) || (/[a-zA-Z]/.test(word) && !hindiHinglishKeywords.includes(word))) {
                     englishWordCount++;
@@ -359,209 +752,32 @@
                 }
             });
 
-            // If there are Hindi characters, it's either Hindi or Hinglish
             if (hasHindiChars) {
-                if (englishWordCount > 0) {
-                    return "hinglish";
-                }
+                if (englishWordCount > 0) return "hinglish";
                 return "hindi";
-            }
-            // If no Hindi characters, check for Hinglish patterns
-            else if (hindiWordCount > 0 && englishWordCount > 0) {
-                // If there's a good mix of both, it's Hinglish
-                return "hinglish";
-            }
-            // If no Hindi characters and predominantly English
-            else if (englishWordCount > 0 && hindiWordCount === 0) {
-                return "english";
-            }
-            // If no Hindi characters and predominantly Hindi/Hinglish (e.g., phonetic Hindi)
-            else if (hindiWordCount > 0 && englishWordCount === 0) {
-                return "hinglish"; // phonetic Hindi is usually treated as Hinglish for chatbot purposes
-            }
-
-            // Fallback for very short or ambiguous inputs, or if counts are zero
-            if (words.length > 0) {
-                if (englishWordCount > hindiWordCount) {
+            } else {
+                // If no Hindi characters, check for Hinglish by mix of romanized Hindi and English
+                const totalWords = words.length;
+                if (totalWords > 0 && ((hindiWordCount / totalWords > 0.3) && (englishWordCount / totalWords > 0.3))) {
+                    return "hinglish";
+                } else if (englishWordCount > hindiWordCount) {
                     return "english";
                 } else if (hindiWordCount > englishWordCount) {
-                    return "hinglish"; // Default phonetic to Hinglish
+                    return "hinglish"; // Treat purely phonetic Hindi as Hinglish for interaction
                 }
             }
-
-            // Default to English if truly ambiguous or empty
-            return "english";
+            return "english"; // Default fallback
         }
 
 
-        // Different friendly greetings for the bot
-        const friendlyGreetings = {
-            "english": [
-                "Hey there! 👋",
-                "Hi! How can I help you today? 😊",
-                "Hello! What's on your mind about JIET? 🤔",
-                "Hey! Ready to dive into JIET info? 🚀"
-            ],
-            "hindi": [
-                "नमस्ते! मैं JIET असिस्टेंट हूँ। 👋",
-                "नमस्कार! मैं आपकी कैसे मदद कर सकता हूँ? 😊",
-                "नमस्ते! JIET के बारे में क्या जानना चाहते हैं? 🤔",
-                "अरे! JIET जानकारी में गोता लगाने के लिए तैयार हैं? 🚀"
-            ],
-            "hinglish": [
-                "Hey there! Kaise ho? 👋",
-                "Hi! Main apki kaise help kar sakta hu? 😊",
-                "Hello! Kya chal raha hai JIET ke baare mein? 🤔",
-                "Arre! JIET info ke liye ready ho? 🚀"
-            ]
-        };
-
-        // Different ways to phrase the admissions response
-        const admissionPhrases = {
-            "english": [
-                "Great question! You can kickstart your JIET journey by heading over to our official admissions portal. It's super easy! Check it out here:",
-                "Looking to join JIET? Awesome! 🙌 You can complete your registration and apply for admission directly on our official website. Here's the link:",
-                "Thinking about admissions at JIET? You're in the right place! ✨ Just click on this link to start your application:",
-                "To get started with your JIET registration and admission, simply visit our dedicated portal. We've made it simple for you:",
-                "Planning to apply to JIET? Fantastic! 🤩 The online registration is quick and easy. Find the portal here:"
-            ],
-            "hindi": [
-                "बहुत अच्छा सवाल! आप हमारे आधिकारिक प्रवेश पोर्टल पर जाकर अपनी JIET यात्रा शुरू कर सकते हैं। यह बहुत आसान है! यहाँ देखें:",
-                "JIET में शामिल होना चाहते हैं? बहुत बढ़िया! 🙌 आप हमारी आधिकारिक वेबसाइट पर सीधे अपना पंजीकरण और प्रवेश के लिए आवेदन कर सकते हैं। यहाँ लिंक है:",
-                "JIET में प्रवेश के बारे में सोच रहे हैं? आप सही जगह पर हैं! ✨ अपना आवेदन शुरू करने के लिए बस इस लिंक पर क्लिक करें:",
-                "अपने JIET पंजीकरण और प्रवेश के साथ शुरू करने के लिए, बस हमारे समर्पित पोर्टल पर जाएं। हमने इसे आपके लिए सरल बना दिया है:",
-                "JIET में आवेदन करने की योजना बना रहे हैं? शानदार! 🤩 ऑनलाइन पंजीकरण त्वरित और आसान है। पोर्टल यहाँ खोजें:"
-            ],
-            "hinglish": [
-                "Great question! Aap apni JIET journey hamare official admissions portal par jaa kar start kar sakte hain. Bohut easy hai! Yahan dekho:",
-                "JIET join karna hai? Awesome! 🙌 Aap apna registration aur admission ke liye hamari official website par apply kar sakte hain. Link yahan hai:",
-                "JIET mein admissions ke baare mein soch rahe ho? Sahi jagah ho! ✨ Bus is link par click karo aur apna application start karo:",
-                "JIET registration aur admission ke liye, hamare dedicated portal par jao. Humne isse simple bana diya hai aapke liye:",
-                "Planning to apply to JIET? Fantastic! 🤩 Online registration bohut quick aur easy hai. Portal yahan milega:"
-            ]
-        };
-
-        // Different ways to phrase the address response
-        const addressPhrases = {
-            "english": [
-                "Of course! Here's where you can find JIET Universe:",
-                "Looking for us? Here's our address at JIET Universe. We'd love to see you! 👇",
-                "You got it! JIET Universe is located at:",
-                "Here’s the full address for JIET Universe. Plus, a little map to help you find your way! 🗺️",
-                "Absolutely! Our campus, JIET Universe, is situated at:"
-            ],
-            "hindi": [
-                "बिल्कुल! JIET यूनिवर्स यहाँ स्थित है:",
-                "हमें ढूंढ रहे हैं? JIET यूनिवर्स का हमारा पता यहाँ है। हम आपसे मिलकर बहुत खुश होंगे! 👇",
-                "हाँ! JIET यूनिवर्स यहाँ स्थित है:",
-                "यह JIET यूनिवर्स का पूरा पता है। साथ ही, अपना रास्ता खोजने में मदद करने के लिए एक छोटा सा नक्शा भी! 🗺️",
-                "निश्चित रूप से! हमारा कैंपस, JIET यूनिवर्स, यहाँ स्थित है:"
-            ],
-            "hinglish": [
-                "Of course! JIET Universe yahan milega:",
-                "Humein dhundh rahe ho? JIET Universe ka address yahan hai. Humein aapse milkar khushi hogi! 👇",
-                "Haan! JIET Universe yahan located hai:",
-                "Yeh JIET Universe ka pura address hai. Aur saath mein ek chhota sa map bhi hai aapki help ke liye! 🗺️",
-                "Absolutely! Humara campus, JIET Universe, yahan situated hai:"
-            ]
-        };
-
-        const closingPhrases = {
-            "english": [
-                "Hope this helps! Is there anything else I can assist you with today? 😊",
-                "Glad I could help! Feel free to ask if you have more questions. ✨",
-                "Let me know if you need anything else! Happy to assist. 👍",
-                "Is there anything else you'd like to know about JIET? I'm here to help! 🚀"
-            ],
-            "hindi": [
-                "आशा है यह आपकी मदद करेगा! क्या मैं आज आपकी किसी और चीज़ में मदद कर सकता हूँ? 😊",
-                "मुझे खुशी है कि मैं मदद कर सका! यदि आपके कोई और प्रश्न हैं तो बेझिझक पूछें। ✨",
-                "अगर आपको कुछ और चाहिए तो मुझे बताएं! मदद करने में खुशी होगी। 👍",
-                "क्या आप JIET के बारे में कुछ और जानना चाहेंगे? मैं मदद के लिए यहाँ हूँ! 🚀"
-            ],
-            "hinglish": [
-                "Hope this helps! Aur kuch puchna hai aaj? 😊",
-                "Khushi hui help karke! Aur questions hon toh puch lena. ✨",
-                "Bata dena agar kuch aur chahiye! Help karke khushi hogi. 👍",
-                "JIET ke bare mein aur kuch jaanna hai? Main yahan hu help ke liye! 🚀"
-            ]
-        };
-
-        const notFoundPhrases = {
-            "english": `Oops! I couldn't find an answer for that right now in my knowledge base. Maybe try rephrasing? You can also check out the <a href='https://www.jietjodhpur.ac.in/' target='_blank' class='text-indigo-600 font-semibold hover:underline'>official JIET website</a> for more info. 😊`,
-            "hindi": `क्षमा करें! मुझे अभी इस प्रश्न का उत्तर मेरे ज्ञानकोष में नहीं मिल पा रहा है। शायद आप इसे अलग तरीके से पूछ सकते हैं? अधिक जानकारी के लिए आप <a href='https://www.jietjodhpur.ac.in/' target='_blank' class='text-indigo-600 font-semibold hover:underline'>आधिकारिक JIET वेबसाइट</a> भी देख सकते हैं। 😊`,
-            "hinglish": `Oops! Mujhe iska answer abhi meri knowledge base mein nahi mila. Shayad aap isse rephrase karke puch sakte hain? Aur zyada info ke liye aap <a href='https://www.jietjodhpur.ac.in/' target='_blank' class='text-indigo-600 font-semibold hover:underline'>official JIET website</a> bhi check kar sakte hain. 😊`
-        };
-
-        const apiErrorPhrases = {
-            "english": `Oh no! It looks like something went wrong on my end. 😔 Please check your internet connection or try asking again in a bit. You can always visit the <a href='https://www.jietjodhpur.ac.in/' target='_blank' class='text-indigo-600 font-semibold hover:underline'>official JIET website</a> for details!`,
-            "hindi": `ओह नहीं! लगता है मेरे सिस्टम में कुछ गड़बड़ हो गई है। 😔 कृपया अपना इंटरनेट कनेक्शन जांचें या थोड़ी देर बाद फिर से पूछें। आप विवरण के लिए हमेशा <a href='https://www.jietjodhpur.ac.in/' target='_blank' class='text-indigo-600 font-semibold hover:underline'>आधिकारिक JIET वेबसाइट</a> पर जा सकते हैं!`,
-            "hinglish": `Oh no! Lagta hai mere side se kuch gadbad ho gayi hai. 😔 Please apna internet connection check karo ya thodi der baad phir se puchna. Aap details ke liye hamesha <a href='https://www.jietjodhpur.ac.in/' target='_blank' class='text-indigo-600 font-semibold hover:underline'>official JIET website</a> visit kar sakte hain!`
-        };
-
-        // Phrases for the course card
-        const courseCardPhrases = {
-            "english": {
-                "initial": "Hey there! We offer a variety of programs at JIET. To help you choose, here's an overview. What program are you interested in?",
-                "prompt": "You can type the name of the course or degree you're interested in, like 'B.Tech CSE' or 'MBA'.",
-                "contact": "Contact Details",
-                "know_more": "Know More",
-                "programs_list": `
-                    <p class="font-semibold text-slate-700 mt-3">We offer:</p>
-                    <ul class="list-disc list-inside text-sm text-slate-600 space-y-1 mt-2">
-                        <li>**Undergraduate (UG) Programs:** B.Tech, B.Des, MBBS, BBA, BCA, B.Sc (H&HA)</li>
-                        <li>**Postgraduate (PG) Programs:** MBA, MCA, M.Tech</li>
-                        <li>**Diploma & Doctoral Programs**</li>
-                    </ul>
-                `
-            },
-            "hindi": {
-                "initial": "नमस्ते! हम JIET में कई तरह के प्रोग्राम पेश करते हैं। आपकी पसंद में मदद करने के लिए, यहाँ एक अवलोकन है। आप किस प्रोग्राम में रुचि रखते हैं?",
-                "prompt": "आप जिस कोर्स या डिग्री में रुचि रखते हैं, उसका नाम टाइप कर सकते हैं, जैसे 'बी.टेक सीएसई' या 'एमबीए'।",
-                "contact": "संपर्क विवरण",
-                "know_more": "अधिक जानें",
-                "programs_list": `
-                    <p class="font-semibold text-slate-700 mt-3">हम प्रदान करते हैं:</p>
-                    <ul class="list-disc list-inside text-sm text-slate-600 space-y-1 mt-2">
-                        <li>**स्नातक (UG) प्रोग्राम:** बी.टेक, बी.डेस, एमबीबीएस, बीबीए, बीसीए, बी.एससी (एच एंड एचए)</li>
-                        <li>**स्नातकोत्तर (PG) प्रोग्राम:** एमबीए, एमसीए, एम.टेक</li>
-                        <li>**डिप्लोमा और डॉक्टरेट प्रोग्राम**</li>
-                    </ul>
-                `
-            },
-            "hinglish": {
-                "initial": "Hey there! Hum JIET mein bohut types ke programs offer karte hain. Choose karne mein help ke liye, yahan ek overview hai. Aap kis program mein interested ho?",
-                "prompt": "Aap us course ya degree ka naam type kar sakte ho jisme aap interested ho, jaise 'B.Tech CSE' ya 'MBA'.",
-                "contact": "Contact Details",
-                "know_more": "Know More",
-                "programs_list": `
-                    <p class="font-semibold text-slate-700 mt-3">Hum offer karte hain:</p>
-                    <ul class="list-disc list-inside text-sm text-slate-600 space-y-1 mt-2">
-                        <li>**Undergraduate (UG) Programs:** B.Tech, B.Des, MBBS, BBA, BCA, B.Sc (H&HA)</li>
-                        <li>**Postgraduate (PG) Programs:** MBA, MCA, M.Tech</li>
-                        <li>**Diploma & Doctoral Programs**</li>
-                    </ul>
-                `
-            }
-        };
-
-
         /**
-         * Appends a message to the chat window.
-         * @param {string} sender - 'user' or 'bot'.
-         * @param {string} message - The message content (can be HTML).
+         * Formats bot messages to include bolding, lists, and clickable links.
+         * @param {string} text - The raw text from the bot.
+         * @returns {string} HTML formatted text.
          */
         function formatBotMessage(text) {
-            // Links to clickable <a> tags
-            text = text.replace(
-                /(https?:\/\/[^\s]+)/g,
-                '<a href="$1" target="_blank" class="text-indigo-600 hover:underline font-semibold break-all">$1</a>'
-            );
-
-            // **bold text** to <strong>
+            // First, process markdown for bolding and lists
             let html = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-            // Handle lists and paragraphs
             const lines = html.split('\n');
             let finalHtml = '';
             let inList = false;
@@ -580,53 +796,55 @@
                         finalHtml += '</ul>';
                         inList = false;
                     }
-                    if (trimmedLine.length > 0) {
-                        finalHtml += line.includes('<a href=') ? line : `<p>${line}</p>`;
+                    // ONLY wrap in <p> if it's not already complex HTML like a card, link or quick replies
+                    if (line.includes('<a href=') || line.includes('class="course-card"') || line.includes('quick-reply-chips')) {
+                        finalHtml += line; // If it's already complex HTML (like a card or quick replies), add as is
+                    } else if (trimmedLine.length > 0) {
+                        // Apply link formatting only to raw URLs that aren't already part of an <a> tag
+                        let processedLine = trimmedLine.replace(
+                            /(https?:\/\/[^\s]+)/g,
+                            '<a href="$1" target="_blank" class="text-indigo-600 hover:underline font-semibold break-all">$1</a>'
+                        );
+                        finalHtml += `<p>${processedLine}</p>`;
                     }
                 }
             });
-
             if (inList) {
                 finalHtml += '</ul>';
             }
-
             return finalHtml;
         }
 
+        /**
+         * Appends a message to the chat window.
+         * @param {string} sender - 'user' or 'bot'.
+         * @param {string} message - The message content (can be HTML).
+         */
         function addMessage(sender, message) {
             const messageWrapper = document.createElement('div');
             messageWrapper.classList.add('message', 'flex');
 
-            let messageHtml;
+            let messageContentHtml;
 
             if (sender === 'user') {
                 messageWrapper.classList.add('justify-end');
-                messageHtml = `
-                    <div class="mr-3 bg-indigo-600 text-white p-3 rounded-lg rounded-tr-none shadow-md max-w-[85%]">
-                        <p>${message}</p>
-                    </div>
-                    <div class="flex-shrink-0">
-                        <div class="h-8 w-8 rounded-full bg-slate-300 flex items-center justify-center text-slate-600 font-bold text-sm">U</div>
-                    </div>
-                `;
+                messageContentHtml = `<p>${message}</p>`; // User messages are always plain text here
             } else { // Bot message
-                let finalMessageHtml;
-
-                if (message.includes('<iframe') || message.includes('course-card')) { // Check for specific HTML structures
-                    finalMessageHtml = message;
-                } else {
-                    finalMessageHtml = formatBotMessage(message);
-                }
-
-                messageHtml = `
-                    <div class="flex-shrink-0">
-                        <div class="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold text-sm">AI</div>
-                    </div>
-                    <div class="ml-3 bg-white text-slate-800 p-3 rounded-lg rounded-tl-none shadow-md max-w-[85%]">
-                        ${finalMessageHtml}
-                    </div>
-                `;
+                messageContentHtml = formatBotMessage(message); // Format bot messages
             }
+
+            const messageHtml = `
+                ${sender === 'user' ? `<div class="mr-3 bg-indigo-600 text-white p-3 rounded-lg rounded-tr-none shadow-md max-w-[85%]">${messageContentHtml}</div>
+                <div class="flex-shrink-0">
+                    <div class="h-8 w-8 rounded-full bg-slate-300 flex items-center justify-center text-slate-600 font-bold text-sm">U</div>
+                </div>` :
+                `<div class="flex-shrink-0">
+                    <div class="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold text-sm">AI</div>
+                </div>
+                <div class="ml-3 bg-white text-slate-800 p-3 rounded-lg rounded-tl-none shadow-md max-w-[85%]">
+                    ${messageContentHtml}
+                </div>`}
+            `;
 
             messageWrapper.innerHTML = messageHtml;
             chatMessages.appendChild(messageWrapper);
@@ -678,34 +896,169 @@
         }
 
         /**
-         * Generates and adds the course card to the chat.
-         * @param {string} lang - The detected language ('english', 'hindi', 'hinglish').
+         * Displays quick reply chips/buttons in the chat.
+         * @param {string[]} options - An array of strings for the button labels.
+         * @param {string} type - 'course_type' or 'specialization' to differentiate click handlers.
+         * @param {string} prompt - Text message to accompany the chips.
          */
-        function showCourseCard(lang) {
-            const phrases = courseCardPhrases[lang];
-            const courseCardHtml = `
-                <div class="message flex">
-                    <div class="flex-shrink-0">
-                        <div class="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold text-sm">AI</div>
+        function showQuickReplyChips(options, type, prompt) {
+            const chipsHtml = `
+                <p>${prompt}</p>
+                <div class="quick-reply-chips mt-2" data-type="${type}">
+                    ${options.map(option => `<div class="quick-reply-chip" data-value="${option}">${option}</div>`).join('')}
+                </div>
+            `;
+            addMessage('bot', chipsHtml); // Use addMessage to properly format the message bubble
+
+            document.querySelectorAll('.quick-reply-chip').forEach(chip => {
+                chip.onclick = handleQuickReplyClick;
+            });
+        }
+
+        /**
+         * Handles clicks on quick reply chips.
+         * @param {Event} event - The click event.
+         */
+        function handleQuickReplyClick(event) {
+            const chip = event.target;
+            const value = chip.dataset.value;
+            const chipContainer = chip.closest('.quick-reply-chips');
+
+            // Find the parent message bubble and remove its content after selection
+            const parentMessageBubble = chip.closest('.ml-3');
+            if (parentMessageBubble) {
+                // Keep the prompt text but remove the chips
+                const promptP = parentMessageBubble.querySelector('p');
+                parentMessageBubble.innerHTML = ''; // Clear existing content
+                if (promptP) {
+                    parentMessageBubble.appendChild(promptP); // Re-add just the prompt
+                }
+                chipContainer.remove(); // This line is now redundant if parentMessageBubble is cleared, but good for safety
+            }
+
+
+            addMessage('user', value); // Show user's selection
+
+            toggleInput(true); // Disable input while processing
+            showTypingIndicator();
+
+            const type = chipContainer.dataset.type; // Get type AFTER potentially removing element
+
+            if (type === 'course_type') {
+                selectedCourseType = value;
+                currentCourseSelectionStage = `awaiting_${value.toLowerCase()}_specialization`;
+
+                // Get specializations for the selected course type
+                const specializations = courseData[value] && courseData[value].specializations;
+
+                if (specializations && specializations.length > 0) {
+                    removeTypingIndicator();
+                    showQuickReplyChips(specializations, 'specialization',
+                        (detectedUserLanguage === 'hindi' ? 'किस विशेषज्ञता में रुचि रखते हैं?' :
+                         detectedUserLanguage === 'hinglish' ? 'Kis specialization mein interested ho?' :
+                         'Which specialization are you interested in?')
+                    );
+                    toggleInput(false); // Re-enable input after showing new chips
+                } else {
+                    // No specializations, directly provide info for the main course type
+                    provideCourseInfo(value);
+                    toggleInput(false);
+                    currentCourseSelectionStage = null; // Reset stage
+                    selectedCourseType = null;
+                }
+            } else if (type === 'specialization') {
+                // This is a specialization. selectedCourseType should already be set.
+                provideCourseInfo(selectedCourseType, value);
+                toggleInput(false);
+                currentCourseSelectionStage = null; // Reset stage
+                selectedCourseType = null;
+            }
+        }
+
+        /**
+         * Provides detailed course information based on selected course type and specialization.
+         * @param {string} courseType - The main course type (e.g., 'B.Tech', 'MBA').
+         * @param {string} [specialization] - The specific specialization (optional).
+         */
+        function provideCourseInfo(courseType, specialization = null) {
+            removeTypingIndicator();
+            const courseInfo = courseData[courseType];
+            const langInfo = courseInfo[detectedUserLanguage];
+            let response = `${langInfo.intro}`;
+
+            if (specialization && courseType === "B.Tech") {
+                const placementInfo = langInfo.placements[specialization] || (detectedUserLanguage === 'hindi' ? "इस विशेषज्ञता के लिए कोई विशिष्ट प्लेसमेंट डेटा उपलब्ध नहीं है, लेकिन कुल मिलाकर बी.टेक प्लेसमेंट मजबूत हैं।" : detectedUserLanguage === 'hinglish' ? "Is specialization ke liye koi specific placement data available nahi hai, par overall B.Tech placements strong hain." : "No specific placement data available for this specialization, but overall B.Tech placements are strong.");
+                response += `\n\nFor **${specialization}**:`;
+                response += `\n- **Average Placement:** ${placementInfo}`;
+            }
+
+            response += `\n- **Fees (1st Year):** ${langInfo.fees}`;
+            response += `\n- **Eligibility:** ${langInfo.eligibility}`;
+
+            // Add scholarship info if available
+            // Note: Your scholarship data in the knowledge base is a bit flat,
+            // so this logic is an approximation. For more precise data,
+            // you'd need to expand the `courseData` structure for scholarships.
+            let scholarshipText = "";
+            if (courseType === "B.Tech") {
+                if (specialization === "CSE" || specialization === "AI & ML" || specialization === "Data Science" || specialization === "Cyber Security") {
+                    scholarshipText = (detectedUserLanguage === 'hindi' ? "जेईई मेन में 90 परसेंटाइल या 12वीं में >=90% पर छात्रवृत्ति उपलब्ध है।" : detectedUserLanguage === 'hinglish' ? "JEE Main mein 90 Percentile ya 12th mein >=90% par scholarship available hai." : "Scholarship available for >=90 Percentile in JEE Main or >=90% in Class 12th.");
+                } else if (["ME", "CE", "EE", "ECE"].includes(specialization)) {
+                    scholarshipText = (detectedUserLanguage === 'hindi' ? "12वीं में >=60% पर 4 साल के लिए ₹40,000 की छात्रवृत्ति, <60% पर ₹25,000।" : detectedUserLanguage === 'hinglish' ? "12th mein >=60% par 4 saal ke liye ₹40,000 scholarship, <60% par ₹25,000." : "Scholarship of ₹40,000 for 4 years with >=60% in Class 12th, ₹25,000 for <60%.");
+                }
+            } else if (courseType === "B.Des") {
+                scholarshipText = (detectedUserLanguage === 'hindi' ? "12वीं में >=60% पर 4 साल के लिए ₹40,000 की छात्रवृत्ति, <60% पर ₹25,000।" : detectedUserLanguage === 'hinglish' ? "12th mein >=60% par 4 saal ke liye ₹40,000 scholarship, <60% par ₹25,000." : "Scholarship of ₹40,000 for 4 years with >=60% in Class 12th, ₹25,000 for <60%.");
+            } else if (courseType === "BBA" || courseType === "BCA") {
+                scholarshipText = (detectedUserLanguage === 'hindi' ? "12वीं में >=60% पर 3 साल के लिए ₹25,000 की छात्रवृत्ति, <60% पर ₹15,000।" : detectedUserLanguage === 'hinglish' ? "12th mein >=60% par 3 saal ke liye ₹25,000 scholarship, <60% par ₹15,000." : "Scholarship of ₹25,000 for 3 years with >=60% in Class 12th, ₹15,000 for <60%.");
+            } else if (courseType === "MBA" || courseType === "MCA") {
+                scholarshipText = (detectedUserLanguage === 'hindi' ? "स्नातक में >=80% पर ₹15,000 की एकमुश्त छात्रवृत्ति।" : detectedUserLanguage === 'hinglish' ? "Graduation mein >=80% par ₹15,000 ki one-time scholarship." : "One-time scholarship of ₹15,000 for >=80% in Graduation.");
+            } else if (courseType === "M.Tech") {
+                scholarshipText = (detectedUserLanguage === 'hindi' ? "सभी प्रवेश प्राप्त छात्रों को दोनों वर्षों के लिए ₹25,000 की छात्रवृत्ति।" : detectedUserLanguage === 'hinglish' ? "Sabhi admitted students ko dono saalon ke liye ₹25,000 scholarship." : "All admitted students receive a ₹25,000 scholarship for both years.");
+            } else if (courseType === "B.Sc (H&HA)") {
+                 scholarshipText = (detectedUserLanguage === 'hindi' ? "12वीं में >=60% पर 3 साल के लिए ₹40,000 की छात्रवृत्ति, <60% पर ₹25,000।" : detectedUserLanguage === 'hinglish' ? "12th mein >=60% par 3 saal ke liye ₹40,000 scholarship, <60% par ₹25,000." : "Scholarship of ₹40,000 for 3 years with >=60% in Class 12th, ₹25,000 for <60%.");
+            }
+
+            if (scholarshipText) {
+                response += `\n- **Scholarship:** ${scholarshipText}`;
+            }
+
+            response += `\n\n${getRandomElement(closingPhrases[detectedUserLanguage])}`;
+            addMessage('bot', response);
+            toggleInput(false);
+            userInput.focus();
+        }
+
+        /**
+         * Generates and adds a generic information card to the chat.
+         * @param {string} lang - The detected language ('english', 'hindi', 'hinglish').
+         * @param {object} cardData - Object containing image, title, description, and button links.
+         * Example: {
+         * imageUrl: "https://example.com/image.png",
+         * title: "Courses Offered",
+         * description: "Here are some courses...",
+         * button1Text: "Contact Us",
+         * button1Link: "tel:+919773378530",
+         * button2Text: "Learn More",
+         * button2Link: "https://www.jietjodhpur.ac.in/"
+         * }
+         */
+        function showInfoCard(lang, cardData) {
+            const cardHtml = `
+                <div class="course-card">
+                    ${cardData.imageUrl ? `<img src="${cardData.imageUrl}" alt="${cardData.title}" class="course-card-image">` : ''}
+                    <div class="course-card-content">
+                        <h3 class="text-lg font-semibold text-slate-900 mb-2">${cardData.title}</h3>
+                        <p class="text-sm text-slate-700">${cardData.description}</p>
                     </div>
-                    <div class="ml-3 bg-white text-slate-800 p-1 rounded-lg rounded-tl-none shadow-md max-w-[85%]">
-                        <div class="course-card">
-                            <img src="https://i.imgur.com/s6Wz8xV.png" alt="Courses Offered Banner" class="course-card-image">
-                            <div class="course-card-content">
-                                <p class="text-sm text-slate-700">${phrases.initial}</p>
-                                ${phrases.programs_list}
-                                <p class="text-xs text-slate-500 mt-4">${phrases.prompt}</p>
-                            </div>
-                            <div class="course-card-buttons">
-                                <a href="tel:+919773378530" class="contact-btn">${phrases.contact}</a>
-                                <a href="https://www.jietjodhpur.ac.in/academics/courses" target="_blank" class="know-more-btn">${phrases.know_more}</a>
-                            </div>
-                        </div>
+                    <div class="course-card-buttons">
+                        ${cardData.button1Text && cardData.button1Link ? `<a href="${cardData.button1Link}" target="${cardData.button1Link.startsWith('tel:') ? '_self' : '_blank'}" class="contact-btn">${cardData.button1Text}</a>` : ''}
+                        ${cardData.button2Text && cardData.button2Link ? `<a href="${cardData.button2Link}" target="_blank" class="know-more-btn">${cardData.button2Text}</a>` : ''}
                     </div>
                 </div>
             `;
-            addMessage('bot', courseCardHtml);
+            addMessage('bot', cardHtml);
         }
+
 
         /**
          * Handles sending a message, calling the AI, and displaying the response.
@@ -720,10 +1073,92 @@
             showTypingIndicator();
 
             // Detect language of the user's message
-            const detectedLanguage = detectLanguage(userMessage);
+            detectedUserLanguage = detectLanguage(userMessage); // Update global variable
 
-            // 🔍 Keyword check for "registration" or "admission" type queries
+            // Check if we are in a course selection flow (meaning user typed instead of clicking chip)
+            if (currentCourseSelectionStage) {
+                removeTypingIndicator();
+                let guideMessage;
+                if (detectedUserLanguage === 'hindi') {
+                    guideMessage = `कृपया ऊपर दिए गए विकल्पों में से चुनें या फिर से 'कोर्स' टाइप करके विकल्पों को पुनः प्राप्त करें।`;
+                } else if (detectedUserLanguage === 'hinglish') {
+                    guideMessage = `Please upar diye gaye options mein se choose karein ya phir se 'courses' type karke options ko wapas le aayein.`;
+                } else {
+                    guideMessage = `Please select from the options provided above, or type 'courses' again to re-display the options.`;
+                }
+                addMessage('bot', guideMessage);
+                toggleInput(false);
+                userInput.focus();
+                return;
+            }
+
+
             const lowerMessage = userMessage.toLowerCase();
+
+            // --- Keyword Checks for Card Display ---
+
+            // Handle "Courses" related queries using the new card structure
+            const courseKeywords = [
+                "course", "courses", "program", "programs", "degree", "degrees",
+                "branch", "branches", "specialization", "specializations", "study",
+                "padhai", "konsa course", "course ke baare mein", "courses offered",
+                "degrees offered", "kis course mein admission", "kon se courses", "kya padhai hoti hai"
+            ];
+
+            if (courseKeywords.some(keyword => lowerMessage.includes(keyword))) {
+                removeTypingIndicator();
+                showInfoCard(detectedUserLanguage, jietCardData.courses[detectedUserLanguage]);
+
+                const promptMessage = (detectedUserLanguage === 'hindi' ? 'किस प्रकार का कोर्स जानना चाहेंगे?' :
+                                       detectedUserLanguage === 'hinglish' ? 'Kis type ka course jaanna chahoge?' :
+                                       'Which type of course would you like to know about?');
+                showQuickReplyChips(mainCourseTypes, 'course_type', promptMessage);
+
+                currentCourseSelectionStage = 'awaiting_course_type';
+                toggleInput(false);
+                userInput.focus();
+                return;
+            }
+
+            // Handle "Placements" related queries using the new card structure
+            const placementKeywords = [
+                "placement", "placements", "salary", "package", "job", "jobs", "company",
+                "companies", "recruiters", "career", "rojgar", "nokri", "placement kaise hota hai",
+                "placement statistics", "average package", "highest package"
+            ];
+
+            if (placementKeywords.some(keyword => lowerMessage.includes(keyword))) {
+                removeTypingIndicator();
+                if (jietCardData.placements && jietCardData.placements[detectedUserLanguage]) {
+                    showInfoCard(detectedUserLanguage, jietCardData.placements[detectedUserLanguage]);
+                } else {
+                    addMessage('bot', notFoundPhrases[detectedUserLanguage]);
+                }
+                toggleInput(false);
+                userInput.focus();
+                return;
+            }
+
+            // Handle "Fees" related queries using the new card structure
+            const feesKeywords = [
+                "fees", "fee", "cost", "scholarship", "scholarships", "charge", "charges",
+                "kitne paise", "kitni fees hai", "fee structure", "fee jankari"
+            ];
+
+            if (feesKeywords.some(keyword => lowerMessage.includes(keyword))) {
+                removeTypingIndicator();
+                if (jietCardData.fees && jietCardData.fees[detectedUserLanguage]) {
+                    showInfoCard(detectedUserLanguage, jietCardData.fees[detectedUserLanguage]);
+                } else {
+                    addMessage('bot', notFoundPhrases[detectedUserLanguage]);
+                }
+                toggleInput(false);
+                userInput.focus();
+                return;
+            }
+
+            // --- Existing Keyword Checks (for direct text responses) ---
+
             const registrationKeywords = [
                 "registration", "register", "admission",
                 "form bharna", "form fill", "apply",
@@ -734,16 +1169,16 @@
 
             if (registrationKeywords.some(keyword => lowerMessage.includes(keyword))) {
                 removeTypingIndicator();
-                const selectedAdmissionPhrase = getRandomElement(admissionPhrases[detectedLanguage]);
+                const selectedAdmissionPhrase = getRandomElement(admissionPhrases[detectedUserLanguage]);
                 const responseText = `
-                    ${selectedAdmissionPhrase}
-                    👉 <a href="https://admissions.jietjodhpur.ac.in/" target="_blank" class="text-indigo-600 font-semibold hover:underline">https://admissions.jietjodhpur.ac.in/</a><br><br>
-                    ${getRandomElement(closingPhrases[detectedLanguage].map(p => p.replace("Hope this helps!", "If you need any help filling out the form, feel free to ask! 😊").replace("Glad I could help!", "Let me know if you have more questions about the process!")))}
+                    <p>${selectedAdmissionPhrase}</p>
+                    <p><a href="https://admissions.jietjodhpur.ac.in/" target="_blank" class="text-indigo-600 font-semibold hover:underline">https://admissions.jietjodhpur.ac.in/</a></p>
+                    <p class="mt-2">${getRandomElement(closingPhrases[detectedUserLanguage].map(p => p.replace("Hope this helps!", "If you need any help filling out the form, feel free to ask! 😊").replace("Glad I could help!", "Let me know if you have more questions about the process!")))}</p>
                 `;
                 addMessage('bot', responseText);
                 toggleInput(false);
                 userInput.focus();
-                return; // ✅ Skip Gemini API call
+                return;
             }
 
             const addressKeywords = ["address", "location", "map", "pata", "kahan hai", "kaha par hai"];
@@ -751,55 +1186,20 @@
             if (addressKeywords.some(keyword => lowerMessage.includes(keyword))) {
                 removeTypingIndicator();
 
-                // JIET के Latitude और Longitude
-                const lat = 26.1843;
-                const lng = 73.0033;
-
-                // Google Maps का एम्बbed URL
-                // Note: Direct embed URL should be used. This is a placeholder for demonstration.
-                // In a real application, you'd fetch a valid embed URL from Google Maps.
-                const mapEmbedUrl = `https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3579.522967007775!2d72.99955777421805!3d26.18432587707436!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39422e11a36484e5%3A0x6a0c5c4e7d9b9d3b!2sJodhpur%20Institute%20of%20Engineering%20&%20Technology%20(JIET)!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin`;
-
-
-                const selectedAddressPhrase = getRandomElement(addressPhrases[detectedLanguage]);
+                const selectedAddressPhrase = getRandomElement(addressPhrases[detectedUserLanguage]);
                 const responseText = `
                     <p>${selectedAddressPhrase}</p>
-                    <p class="mt-1">NH-62, Jodhpur Pali Highway,<br>Village Mogra, Jodhpur - 342802</p>
-
-                    <div class="mt-3 border rounded-lg overflow-hidden shadow-md">
-                        <iframe
-                            width="100%"
-                            height="250"
-                            style="border:0;"
-                            loading="lazy"
-                            allowfullscreen
-                            src="${mapEmbedUrl}">
-                        </iframe>
-                    </div>
+                    <p class="mt-1">JIET Universe, NH-62, Jodhpur Pali Highway,<br>Village Mogra, Jodhpur - 342802</p>
+                    <p class="mt-3 text-sm text-slate-700">You can find us easily on Google Maps here:</p>
+                    <p><a href="https://www.google.com/maps/search/?api=1&query=JIET+Universe+Jodhpur" target="_blank" class="text-indigo-600 font-semibold hover:underline">View on Google Maps 🗺️</a></p>
                 `;
                 addMessage('bot', responseText);
                 toggleInput(false);
                 userInput.focus();
-                return; // Skip Gemini API call
+                return;
             }
 
-            // New: Handle "Courses" related queries
-            const courseKeywords = [
-                "course", "courses", "program", "programs", "degree", "degrees",
-                "branch", "branches", "specialization", "specializations", "study",
-                "padhai", "konsa course", "course ke baare mein", "courses offered",
-                "degrees offered", "kis course mein admission", "kon se courses", "kya padhai hoti hai"
-            ];
-
-            if (courseKeywords.some(keyword => lowerMessage.includes(keyword))) {
-                removeTypingIndicator();
-                showCourseCard(detectedLanguage); // Show the interactive course card
-                toggleInput(false);
-                userInput.focus();
-                return; // Skip Gemini API call
-            }
-
-
+            // --- Fallback to Gemini API if no specific keyword match ---
             chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
 
             const systemInstructionText = `
@@ -808,11 +1208,11 @@
                 Please use a **conversational, approachable, and friendly tone**, almost like talking to a friend.
                 Vary your phrasing and sentence structures to avoid sounding repetitive.
                 Feel free to use **emojis** where appropriate to add to the friendly tone.
-                The user has sent their query in **${detectedLanguage}**. Please respond in the same language:
+                The user has sent their query in **${detectedUserLanguage}**. Please respond in the same language:
                 - If the user types in **pure English**, respond in **pure English**.
                 - If the user types in **pure Hindi (Devanagari script)**, respond in **pure Hindi**.
                 - If the user types in **Hinglish (mix of Romanized Hindi and English words)**, respond in **Hinglish**.
-                
+
                 If the answer is not in the knowledge base, you MUST respond by politely stating you don't have the information in your current data, and then provide a direct, clickable link to the official JIET website: https://www.jietjodhpur.ac.in/.
                 Always try to end your response with a friendly closing or an encouraging question.
 
@@ -826,7 +1226,7 @@
                 }
             };
 
-            const apiKey = "AIzaSyANLNL6kdk6iFvSXv7LKgSGY1OQ4CLQuQ8"; // Canvas will provide the key automatically
+            const apiKey = "AIzaSyDvYU3qMbaHVmGLVtZZi9Bx6HqYld6aTP4"; // <<<<<<< IMPORTANT: REPLACE WITH YOUR ACTUAL GEMINI API KEY >>>>>>>
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
             try {
@@ -853,13 +1253,13 @@
                     addMessage('bot', botResponse);
                     chatHistory.push(result.candidates[0].content);
                 } else {
-                    addMessage('bot', notFoundPhrases[detectedLanguage]);
+                    addMessage('bot', notFoundPhrases[detectedUserLanguage]);
                     console.error('Unexpected API response structure:', result);
                 }
 
             } catch (error) {
                 removeTypingIndicator();
-                addMessage('bot', apiErrorPhrases[detectedLanguage]);
+                addMessage('bot', apiErrorPhrases[detectedUserLanguage]);
                 console.error('Error fetching from Gemini API:', error);
             } finally {
                 toggleInput(false);
@@ -879,11 +1279,112 @@
         document.addEventListener('DOMContentLoaded', () => {
             const initialWelcomeMessageElement = document.querySelector('#chat-messages .message p');
             if (initialWelcomeMessageElement) {
-                // Determine a default language for the initial greeting, e.g., English or Hinglish
-                const defaultLang = "english"; // You can set this dynamically if needed based on user's browser language etc.
+                const defaultLang = "english";
                 initialWelcomeMessageElement.innerHTML = getRandomElement(friendlyGreetings[defaultLang]) + ` I'm your JIET Assistant, here to help with questions about admissions, courses, fees, placements, and campus life at JIET Universe. How can I assist you today? ✨`;
             }
         });
+
+        // Different friendly greetings for the bot
+        const friendlyGreetings = {
+            "english": [
+                "Hey there! 👋",
+                "Hi! How can I help you today? 😊",
+                "Hello! What's on your mind about JIET? 🤔",
+                "Hey! Ready to dive into JIET info? 🚀"
+            ],
+            "hindi": [
+                "नमस्ते! मैं JIET असिस्टेंट हूँ। 👋",
+                "नमस्कार! मैं आपकी कैसे मदद कर सकता हूँ? 😊",
+                "नमस्ते! JIET के बारे में क्या जानना चाहते हैं? 🤔",
+                "अरे! JIET जानकारी में गोता लगाने के लिए तैयार हैं? 🚀"
+            ],
+            "hinglish": [
+                "Hey there! Kaise ho? 👋",
+                "Hi! Main apki kaise help kar sakta hu? 😊",
+                "Hello! Kya chal raha hai JIET ke baare mein? 🤔",
+                "Arre! JIET info ke liye ready ho? 🚀"
+            ]
+        };
+
+        // Different ways to phrase the admissions response
+        const admissionPhrases = {
+            "english": [
+                "Great question! You can kickstart your JIET journey by heading over to our official admissions portal. It's super easy! Check it out here:",
+                "Looking to join JIET? Awesome! 🙌 You can complete your registration and apply for admission directly on our official website. Here's the link:",
+                "Thinking about admissions at JIET? You're in the right place! ✨ Just click on this link to start your application:",
+                "To get started with your JIET registration and admission, simply visit our dedicated portal. We've made it simple for you:",
+                "Planning to apply to JIET? Fantastic! 🤩 The online registration is quick and easy. Find the portal here:"
+            ],
+            "hindi": [
+                "बहुत अच्छा सवाल! आप हमारे आधिकारिक प्रवेश पोर्टल पर जाकर अपनी JIET यात्रा शुरू कर सकते हैं। यह बहुत आसान है! यहाँ देखें:",
+                "JIET में शामिल होना चाहते हैं? बहुत बढ़िया! 🙌 आप हमारी आधिकारिक वेबसाइट पर सीधे अपना पंजीकरण और प्रवेश के लिए आवेदन कर सकते हैं। यहाँ लिंक है:",
+                "JIET में प्रवेश के बारे में सोच रहे हैं? आप सही जगह पर हैं! ✨ अपना आवेदन शुरू करने के लिए बस इस लिंक पर क्लिक करें:",
+                "अपने JIET पंजीकरण और प्रवेश के साथ शुरू करने के लिए, बस हमारे समर्पित पोर्टल पर जाएं। हमने इसे आपके लिए सरल बना दिया है:",
+                "JIET में आवेदन करने की योजना बना रहे हैं? शानदार! 🤩 ऑनलाइन पंजीकरण त्वरित और आसान है। पोर्टल यहाँ खोजें:"
+            ],
+            "hinglish": [
+                "Great question! Aap apni JIET journey hamare official admissions portal par jaa kar start kar sakte hain. Bohut easy hai! Yahan dekho:",
+                "JIET join karna hai? Awesome! 🙌 Aap apna registration aur admission ke liye hamari official website par apply kar sakte hain. Link yahan hai:",
+                "Thinking about admissions at JIET? Sahi jagah ho! ✨ Bus is link par click karo aur apna application start karo:",
+                "JIET registration aur admission ke liye, hamare dedicated portal par jao. Humne isse simple bana diya hai aapke liye:",
+                "Planning to apply to JIET? Fantastic! 🤩 Online registration bohut quick aur easy hai. Portal yahan milega:"
+            ]
+        };
+
+        // Different ways to phrase the address response
+        const addressPhrases = {
+            "english": [
+                "Of course! Here's where you can find JIET Universe:",
+                "Looking for us? Here's our address at JIET Universe. We'd love to see you! 👇",
+                "You got it! JIET Universe is located at:",
+                "Absolutely! Our campus, JIET Universe, is situated at:"
+            ],
+            "hindi": [
+                "बिल्कुल! JIET यूनिवर्स यहाँ स्थित है:",
+                "हमें ढूंढ रहे हैं? JIET यूनिवर्स का हमारा पता यहाँ है। हम आपसे मिलकर बहुत खुश होंगे! 👇",
+                "हाँ! JIET यूनिवर्स यहाँ स्थित है:",
+                "निश्चित रूप से! हमारा कैंपस, JIET यूनिवर्स, यहाँ स्थित है:"
+            ],
+            "hinglish": [
+                "Of course! JIET Universe yahan milega:",
+                "Humein dhundh rahe ho? JIET Universe ka address yahan hai. Humein aapse milkar khushi hogi! 👇",
+                "Haan! JIET Universe yahan located hai:",
+                "Absolutely! Humara campus, JIET Universe, is situated at:"
+            ]
+        };
+
+        const closingPhrases = {
+            "english": [
+                "Hope this helps! Is there anything else I can assist you with today? 😊",
+                "Glad I could help! Feel free to ask if you have more questions. ✨",
+                "Let me know if you need anything else! Happy to assist. 👍",
+                "Is there anything else you'd like to know about JIET? I'm here to help! 🚀"
+            ],
+            "hindi": [
+                "आशा है यह आपकी मदद करेगा! क्या मैं आज आपकी किसी और चीज़ में मदद कर सकता हूँ? 😊",
+                "मुझे खुशी है कि मैं मदद कर सका! यदि आपके कोई और प्रश्न हैं तो बेझिझक पूछें। ✨",
+                "अगर आपको कुछ और चाहिए तो मुझे बताएं! मदद करने में खुशी होगी। 👍",
+                "क्या आप JIET के बारे में कुछ और जानना चाहेंगे? मैं मदद के लिए यहाँ हूँ! 🚀"
+            ],
+            "hinglish": [
+                "Hope this helps! Aur kuch puchna hai aaj? 😊",
+                "Khushi hui help karke! Aur questions hon toh puch lena. ✨",
+                "Bata dena agar kuch aur chahiye! Help karke khushi hogi. 👍",
+                "JIET ke bare mein aur kuch jaanna hai? Main yahan hu help ke liye! 🚀"
+            ]
+        };
+
+        const notFoundPhrases = {
+            "english": `Oops! I couldn't find an answer for that right now in my knowledge base. Maybe try rephrasing? You can also check out the <a href='https://www.jietjodhpur.ac.in/' target='_blank' class='text-indigo-600 font-semibold hover:underline'>official JIET website</a> for more info. 😊`,
+            "hindi": `क्षमा करें! मुझे अभी इस प्रश्न का उत्तर मेरे ज्ञानकोष में नहीं मिल पा रहा है। शायद आप इसे अलग तरीके से पूछ सकते हैं? अधिक जानकारी के लिए आप <a href='https://www.jietjodhpur.ac.in/' target='_blank' class='text-indigo-600 font-semibold hover:underline'>आधिकारिक JIET वेबसाइट</a> भी देख सकते हैं। 😊`,
+            "hinglish": `Oops! Mujhe iska answer abhi meri knowledge base mein nahi mila. Shayad aap isse rephrase karke puch sakte hain? Aur zyada info ke liye aap <a href='https://www.jietjodhpur.ac.in/' target='_blank' class='text-indigo-600 font-semibold hover:underline'>official JIET website</a> bhi check kar sakte hain. 😊`
+        };
+
+        const apiErrorPhrases = {
+            "english": `Oh no! It looks like something went wrong on my end. 😔 Please check your internet connection or try asking again in a bit. You can always visit the <a href='https://www.jietjodhpur.ac.in/' target='_blank' class='text-indigo-600 font-semibold hover:underline'>official JIET website</a> for details!`,
+            "hindi": `ओह नहीं! लगता है मेरे सिस्टम में कुछ गड़बड़ हो गई है। 😔 कृपया अपना इंटरनेट कनेक्शन जांचें या थोड़ी देर बाद फिर से पूछें। आप विवरण के लिए हमेशा <a href='https://www.jietjodhpur.ac.in/' target='_blank' class='text-indigo-600 font-semibold hover:underline'>आधिकारिक JIET वेबसाइट</a> पर जा सकते हैं!`,
+            "hinglish": `Oh no! Lagta hai mere side se kuch gadbad ho gayi hai. 😔 Please apna internet connection check karo ya thodi der baad phir se puchna. Aap details ke liye hamesha <a href='https://www.jietjodhpur.ac.in/' target='_blank' class='text-indigo-600 font-semibold hover:underline'>official JIET website</a> visit kar sakte hain!`
+        };
     </script>
 </body>
 
