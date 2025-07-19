@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JIET Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Use Inter font for the entire application */
+        body,
+        input,
+        button {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Custom scrollbar for a more polished look */
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: #e2e8f0;
+            /* bg-gray-200 */
+            border-radius: 10px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            /* bg-slate-400 */
+            border-radius: 10px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+            /* bg-slate-500 */
+        }
+
+        /* Simple fade-in animation for messages */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message {
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        /* Typing indicator animation */
+        .dot-flashing {
+            position: relative;
+            width: 10px;
+            height: 10px;
+            border-radius: 5px;
+            background-color: #475569;
+            /* slate-600 */
+            color: #475569;
+            animation: dotFlashing 1s infinite linear alternate;
+            animation-delay: .5s;
+        }
+
+        .dot-flashing::before,
+        .dot-flashing::after {
+            content: '';
+            display: inline-block;
+            position: absolute;
+            top: 0;
+        }
+
+        .dot-flashing::before {
+            left: -15px;
+            width: 10px;
+            height: 10px;
+            border-radius: 5px;
+            background-color: #475569;
+            color: #475569;
+            animation: dotFlashing 1s infinite alternate;
+            animation-delay: 0s;
+        }
+
+        .dot-flashing::after {
+            left: 15px;
+            width: 10px;
+            height: 10px;
+            border-radius: 5px;
+            background-color: #475569;
+            color: #475569;
+            animation: dotFlashing 1s infinite alternate;
+            animation-delay: 1s;
+        }
+
+        ul {
+            list-style-type: disc;
+            padding-left: 20px;
+        }
+
+        @keyframes dotFlashing {
+            0% {
+                background-color: #475569;
+            }
+
+            50%,
+            100% {
+                background-color: #cbd5e1;
+            }
+
+            /* slate-300 */
+        }
+
+        /* Specific styles for the course card simulation */
+        .course-card {
+            background-color: #f8fafc; /* slate-50 */
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            margin-top: 1rem;
+            max-width: 400px; /* Adjust as needed */
+        }
+
+        .course-card-image {
+            width: 100%;
+            height: 180px; /* Fixed height for consistency */
+            object-fit: cover;
+            border-bottom: 1px solid #e2e8f0; /* slate-200 */
+        }
+
+        .course-card-content {
+            padding: 1rem;
+        }
+
+        .course-card-buttons {
+            display: flex;
+            gap: 0.75rem;
+            padding: 1rem;
+            border-top: 1px solid #e2e8f0; /* slate-200 */
+        }
+
+        .course-card-buttons button, .course-card-buttons a {
+            flex: 1;
+            padding: 0.75rem 0.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s ease-in-out;
+            text-align: center;
+            text-decoration: none; /* For <a> tags */
+            display: inline-block; /* For <a> tags */
+        }
+
+        .course-card-buttons .contact-btn {
+            background-color: #6366f1; /* indigo-500 */
+            color: white;
+        }
+
+        .course-card-buttons .contact-btn:hover {
+            background-color: #4f46e5; /* indigo-600 */
+            transform: translateY(-1px);
+        }
+
+        .course-card-buttons .know-more-btn {
+            background-color: #e0e7ff; /* indigo-100 */
+            color: #4f46e5; /* indigo-600 */
+            border: 1px solid #c7d2fe; /* indigo-200 */
+        }
+
+        .course-card-buttons .know-more-btn:hover {
+            background-color: #c7d2fe; /* indigo-200 */
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+
+<body class="bg-slate-200 flex items-center justify-center min-h-screen p-4">
+
+    <div
+        class="chatbot-container bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col h-[90vh] max-h-[700px]">
+
+        <div
+            class="chatbot-header bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 flex items-center justify-between rounded-t-2xl shadow-lg flex-shrink-0">
+            <div class="flex items-center space-x-3">
+                <img src="https://www.jietjodhpur.ac.in/assets/images/logo.png" alt="JIET Logo" class="h-10 w-10"
+                    onerror="this.style.display='none'">
+                <div>
+                    <h1 class="text-xl font-bold">JIET Assistant</h1>
+                    <p class="text-xs opacity-80">Your guide to JIET Universe</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <span class="relative flex h-3 w-3">
+                    <span
+                        class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-300 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-3 w-3 bg-green-400"></span>
+                </span>
+                <span class="text-sm font-medium">Online</span>
+            </div>
+        </div>
+
+        <div id="chat-messages" class="chat-messages flex-1 p-6 overflow-y-auto space-y-4 bg-slate-50">
+            <div class="message flex">
+                <div class="flex-shrink-0">
+                    <div
+                        class="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold text-sm">
+                        AI</div>
+                </div>
+                <div class="ml-3 bg-white text-slate-800 p-3 rounded-lg rounded-tl-none shadow-md max-w-[85%]">
+                    <p>Hello! I am the JIET Assistant. I can answer your questions about admissions, courses, fees,
+                        placements, and campus life at JIET Universe. How can I help you today?</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="message-input-area p-4 bg-white border-t border-slate-200 flex items-center space-x-3">
+            <input type="text" id="user-input" placeholder="Ask about courses, fees, placements..."
+                class="flex-1 p-3 border border-slate-300 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200 ease-in-out text-slate-800">
+            <button id="send-button"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                        d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chat-messages');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        let chatHistory = [];
+
+        // --- KNOWLEDGE BASE ---
+        const jietKnowledgeBase = `
+        # JIET Universe: An In-Depth Institutional Analysis for Digital Integration
+        ## Section 1: JIET Universe: An Institutional Profile
+        Established in 2003, the Jodhpur Institute of Engineering and Technology Group of Institutions (JIET Universe) is a private, autonomous educational group in Jodhpur, Rajasthan. It is recognized by UGC and AICTE, and holds an 'A' Grade from NAAC. Key engineering branches are NBA accredited, making students eligible for opportunities in Europe and America. The main campus is on the Jodhpur-Pali Highway (NH-62).
+        The JIET Universe ecosystem includes: Jodhpur Institute of Engineering and Technology (JIET), JIET Institute of Design and Technology (JIETDAT), JIET College of Nursing (JIETCON), Jodhpur Institute of Hotel Management (JIHM), JIET College of Pharmacy, and JIET Medical College and Hospital.
+        Programs are affiliated with Bikaner Technical University (BTU), Rajasthan University of Health Sciences (RUHS), and NCHMCT. The medical program is regulated by NMC/MCI.
+        Contact: Address: JIET Universe, NH-62, Jodhpur Pali Highway, Village Mogra, Jodhpur - 342802. Phone: +91-291-2868152, +91-9773378530. Email: info@jietjodhpur.ac.in. Website: jietjodhpur.ac.in.
+        ## Section 2: Academic Programs
+        JIET offers UG, PG, diploma, and doctoral programs using a Choice Based Credit System (CBCS).
+        - B.Tech (4 Yrs): CSE, AI & ML, Data Science, Cyber Security, ECE, EE, ME, CE, VLSI, Robotics.
+        - MBBS (5.5 Yrs): At JIET Medical College & Hospital.
+        - B.Des (4 Yrs): Fashion Design, Interior Design.
+        - MBA (2 Yrs): Finance, HR, Marketing, Agri-Business, Business Intelligence.
+        - MCA (2 Yrs): Full Stack Dev, AI, Machine Learning.
+        ## Section 3: Admissions (2025-26 Cycle)
+        Admissions are primarily online. Selection is based on national/state entrance exams.
+        - B.Tech: JEE Main or REAP. Eligibility: 10+2 with PCM (min. 45%).
+        - MBA: CAT / MAT / XAT / CMAT / ATMA. Eligibility: Graduation (min. 50%).
+        - MBBS: NEET UG.
+        ## Section 4: Fees and Scholarships (2025-26)
+        ### 4.1 Program-Wise Fee Structures
+        - B.Tech (1st Year): ~₹1,44,884.
+        - MBA/MCA (1st Year): ~₹1,27,206.
+        - BBA/BCA (1st Year): ~₹85,900.
+        - Hostel (Annual): AC Double Seater: ₹1,50,000. Air Cooled Double Seater: ₹99,000.
+        ### 4.2 Institutional Scholarship Details
+        JIET offers a structured scholarship program. The benefits vary by course and performance.
+        - **B.Tech (CSE, AI & ML, Data Science, Cyber Security):**
+          - Eligibility: >=90% in Class 12th -> Scholarship: ₹15,000 (One-time, 1st Year).
+          - Eligibility: >=90 Percentile in JEE Main -> Scholarship: ₹25,000 (One-time, 1st Year).
+        - **B.Tech (ME, CE, EE, ECE):**
+          - Eligibility: >=60% in Class 12th -> Scholarship: ₹40,000 (All Four Years).
+          - Eligibility: <60% in Class 12th -> Scholarship: ₹25,000 (All Four Years).
+        - **B.Des:**
+          - Eligibility: >=60% in Class 12th -> Scholarship: ₹40,000 (All Four Years).
+          - Eligibility: <60% in Class 12th -> Scholarship: ₹25,000 (All Four Years).
+        - **BBA / BCA:**
+          - Eligibility: >=60% in Class 12th -> Scholarship: ₹25,000 (All Three Years).
+          - Eligibility: <60% in Class 12th -> Scholarship: ₹15,000 (All Three Years).
+        - **MBA / MCA:**
+          - Eligibility: >=80% in Graduation -> Scholarship: ₹15,000 (One-time, 1st Year).
+        - **M.Tech:**
+          - All admitted students receive a ₹25,000 scholarship for both years.
+        - **B.Tech (Lateral Entry):**
+          - All admitted students receive a ₹25,000 scholarship for all three years.
+        - **B.Sc (H&HA):**
+          - Eligibility: >=60% in Class 12th -> Scholarship: ₹40,000 (All Three Years).
+          - Eligibility: <60% in Class 12th -> Scholarship: ₹25,000 (All Three Years).
+        Note: Students can typically avail only one scholarship, whichever is higher.
+        ## Section 5: Placements and Career Trajectories
+        JIET has a proactive Career Development Cell (CDC) that facilitates placements. The placement statistics can vary by source, so it's best to consider a range.
+        - **Highest Salary Package:** The official website reports a highest package of ₹33 LPA for the 2023 batch. However, other sources report figures ranging from ₹11 LPA to ₹18 LPA for recent years. These top packages are often secured by a few high-achieving students.
+        - **Average Salary Package:** Most sources place the average package in the range of ₹4.5 LPA to ₹7 LPA. For the majority of students, a typical offer from on-campus drives is in this range.
+        - **Placement Rate:** The overall placement rate is consistently high, generally reported between 80% and 90%.
+        - **Department-wise Average Packages (Approx. for 2024):**
+          - CSE: ~₹5.66 LPA
+          - AI & ML: ~₹5.35 LPA
+          - MBA: ~₹5.32 LPA
+          - Data Science: ~₹5.21 LPA
+          - Mechanical & Civil: ~₹4.6 LPA
+          - ECE & EE: ~₹4.15 LPA
+        - **Key Recruiters:**
+          - **Mass Recruiters:** TCS, Infosys, Wipro, Capgemini, and Cognizant form the backbone of the placement drives, making a high volume of offers.
+          - **Other Prominent Recruiters:** Celebal Technologies, Tekion, Synopsys, MediaAMP, Wonder Cement, ICICI Bank, Optum, Bajaj Finserv, Reliance Jio, and many others also recruit from campus.
+        ## Section 6: Campus Life
+        45-acre campus with hostels, library, hospital, auditorium, transport fleet, and various student clubs.
+        ### 6.2.2 Student Clubs and Societies
+        JIET encourages a vibrant campus life through a wide array of student-run clubs catering to diverse interests.
+        - **HACKATHON CLUB:** Fosters a culture of competitive programming and problem-solving through hackathons and coding events.
+        - **ANDROID DEVELOPMENT CLUB:** A hub for mobile app enthusiasts to learn, build, and deploy Android applications.
+        - **PHOTOGRAPHY CLUB:** For students passionate about capturing moments, learning photography techniques, and visual storytelling.
+        - **MAD. D CLUB (Music and Dance):** The official platform for performing arts, allowing students to express their talents in music and dance.
+        - **SPORTS CLUB:** Promotes physical fitness and sportsmanship through various indoor and outdoor sports activities and tournaments.
+        - **EDC CLUB (Entrepreneurship Development Cell):** Aims to nurture entrepreneurial skills and support students with innovative business ideas.
+        - **GAME DEVELOPMENT CLUB:** Focuses on the art and science of game creation, using engines like Unity 3D and programming languages like C#.
+        - **DEVELOPER STUDENT CLUB (DSC):** A Google Developers sponsored program for students to learn about mobile and web development, machine learning, and cloud computing.
+        - **NSS CLUB (National Service Scheme):** A community service-oriented group that engages in social outreach and volunteer activities.
+        - **NCC (National Cadet Corps):** A uniformed youth wing offering basic military training and fostering discipline, leadership, and patriotism.
+        - **ROBOTIC CLUB:** An active club for students interested in robotics, automation, and mechatronics, conducting workshops on technologies like Arduino and organizing project competitions.
+        `;
+
+        // Helper function to get a random element from an array
+        function getRandomElement(arr) {
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
+
+        // --- Language Detection Function ---
+        function detectLanguage(text) {
+            const lowerText = text.toLowerCase();
+            let englishWordCount = 0;
+            let hindiWordCount = 0;
+            const words = lowerText.split(/\s+/).filter(word => word.length > 0); // Split by whitespace to get words
+
+            // Check for presence of Devanagari characters
+            const hasHindiChars = /[\u0900-\u097F]/.test(text);
+
+            // Keywords that are typically written in English even in Hinglish contexts
+            const commonEnglishKeywords = [
+                "jiet", "admission", "fees", "courses", "placement", "campus", "college",
+                "university", "btech", "mba", "mca", "bdes", "mbbs", "hostel", "scholarship",
+                "eligibility", "exam", "program", "department", "degree", "branch", "cutoff"
+            ];
+
+            // Keywords that are typically Hindi/Hinglish
+            const hindiHinglishKeywords = [
+                "mujhe", "jaan na", "hain", "hai", "kya", "kaise", "kab", "kahan", "kitna",
+                "chahiye", "batao", "bataiye", "aur", "kitne", "log", "pata", "mil jayega",
+                "karwana hai", "bhare", "aayega", "baare mein", "puchna", "chahie", "ka", "ki", "me", "main", "ko",
+                "karna", "hua", "hu", "hoon"
+            ];
+
+            // Count English and Hindi/Hinglish words based on distinct sets
+            words.forEach(word => {
+                if (commonEnglishKeywords.includes(word) || (/[a-zA-Z]/.test(word) && !hindiHinglishKeywords.includes(word))) {
+                    englishWordCount++;
+                }
+                if (hindiHinglishKeywords.includes(word)) {
+                    hindiWordCount++;
+                }
+            });
+
+            // If there are Hindi characters, it's either Hindi or Hinglish
+            if (hasHindiChars) {
+                if (englishWordCount > 0) {
+                    return "hinglish";
+                }
+                return "hindi";
+            }
+            // If no Hindi characters, check for Hinglish patterns
+            else if (hindiWordCount > 0 && englishWordCount > 0) {
+                // If there's a good mix of both, it's Hinglish
+                return "hinglish";
+            }
+            // If no Hindi characters and predominantly English
+            else if (englishWordCount > 0 && hindiWordCount === 0) {
+                return "english";
+            }
+            // If no Hindi characters and predominantly Hindi/Hinglish (e.g., phonetic Hindi)
+            else if (hindiWordCount > 0 && englishWordCount === 0) {
+                return "hinglish"; // phonetic Hindi is usually treated as Hinglish for chatbot purposes
+            }
+
+            // Fallback for very short or ambiguous inputs, or if counts are zero
+            if (words.length > 0) {
+                if (englishWordCount > hindiWordCount) {
+                    return "english";
+                } else if (hindiWordCount > englishWordCount) {
+                    return "hinglish"; // Default phonetic to Hinglish
+                }
+            }
+
+            // Default to English if truly ambiguous or empty
+            return "english";
+        }
+
+
+        // Different friendly greetings for the bot
+        const friendlyGreetings = {
+            "english": [
+                "Hey there! 👋",
+                "Hi! How can I help you today? 😊",
+                "Hello! What's on your mind about JIET? 🤔",
+                "Hey! Ready to dive into JIET info? 🚀"
+            ],
+            "hindi": [
+                "नमस्ते! मैं JIET असिस्टेंट हूँ। 👋",
+                "नमस्कार! मैं आपकी कैसे मदद कर सकता हूँ? 😊",
+                "नमस्ते! JIET के बारे में क्या जानना चाहते हैं? 🤔",
+                "अरे! JIET जानकारी में गोता लगाने के लिए तैयार हैं? 🚀"
+            ],
+            "hinglish": [
+                "Hey there! Kaise ho? 👋",
+                "Hi! Main apki kaise help kar sakta hu? 😊",
+                "Hello! Kya chal raha hai JIET ke baare mein? 🤔",
+                "Arre! JIET info ke liye ready ho? 🚀"
+            ]
+        };
+
+        // Different ways to phrase the admissions response
+        const admissionPhrases = {
+            "english": [
+                "Great question! You can kickstart your JIET journey by heading over to our official admissions portal. It's super easy! Check it out here:",
+                "Looking to join JIET? Awesome! 🙌 You can complete your registration and apply for admission directly on our official website. Here's the link:",
+                "Thinking about admissions at JIET? You're in the right place! ✨ Just click on this link to start your application:",
+                "To get started with your JIET registration and admission, simply visit our dedicated portal. We've made it simple for you:",
+                "Planning to apply to JIET? Fantastic! 🤩 The online registration is quick and easy. Find the portal here:"
+            ],
+            "hindi": [
+                "बहुत अच्छा सवाल! आप हमारे आधिकारिक प्रवेश पोर्टल पर जाकर अपनी JIET यात्रा शुरू कर सकते हैं। यह बहुत आसान है! यहाँ देखें:",
+                "JIET में शामिल होना चाहते हैं? बहुत बढ़िया! 🙌 आप हमारी आधिकारिक वेबसाइट पर सीधे अपना पंजीकरण और प्रवेश के लिए आवेदन कर सकते हैं। यहाँ लिंक है:",
+                "JIET में प्रवेश के बारे में सोच रहे हैं? आप सही जगह पर हैं! ✨ अपना आवेदन शुरू करने के लिए बस इस लिंक पर क्लिक करें:",
+                "अपने JIET पंजीकरण और प्रवेश के साथ शुरू करने के लिए, बस हमारे समर्पित पोर्टल पर जाएं। हमने इसे आपके लिए सरल बना दिया है:",
+                "JIET में आवेदन करने की योजना बना रहे हैं? शानदार! 🤩 ऑनलाइन पंजीकरण त्वरित और आसान है। पोर्टल यहाँ खोजें:"
+            ],
+            "hinglish": [
+                "Great question! Aap apni JIET journey hamare official admissions portal par jaa kar start kar sakte hain. Bohut easy hai! Yahan dekho:",
+                "JIET join karna hai? Awesome! 🙌 Aap apna registration aur admission ke liye hamari official website par apply kar sakte hain. Link yahan hai:",
+                "JIET mein admissions ke baare mein soch rahe ho? Sahi jagah ho! ✨ Bus is link par click karo aur apna application start karo:",
+                "JIET registration aur admission ke liye, hamare dedicated portal par jao. Humne isse simple bana diya hai aapke liye:",
+                "Planning to apply to JIET? Fantastic! 🤩 Online registration bohut quick aur easy hai. Portal yahan milega:"
+            ]
+        };
+
+        // Different ways to phrase the address response
+        const addressPhrases = {
+            "english": [
+                "Of course! Here's where you can find JIET Universe:",
+                "Looking for us? Here's our address at JIET Universe. We'd love to see you! 👇",
+                "You got it! JIET Universe is located at:",
+                "Here’s the full address for JIET Universe. Plus, a little map to help you find your way! 🗺️",
+                "Absolutely! Our campus, JIET Universe, is situated at:"
+            ],
+            "hindi": [
+                "बिल्कुल! JIET यूनिवर्स यहाँ स्थित है:",
+                "हमें ढूंढ रहे हैं? JIET यूनिवर्स का हमारा पता यहाँ है। हम आपसे मिलकर बहुत खुश होंगे! 👇",
+                "हाँ! JIET यूनिवर्स यहाँ स्थित है:",
+                "यह JIET यूनिवर्स का पूरा पता है। साथ ही, अपना रास्ता खोजने में मदद करने के लिए एक छोटा सा नक्शा भी! 🗺️",
+                "निश्चित रूप से! हमारा कैंपस, JIET यूनिवर्स, यहाँ स्थित है:"
+            ],
+            "hinglish": [
+                "Of course! JIET Universe yahan milega:",
+                "Humein dhundh rahe ho? JIET Universe ka address yahan hai. Humein aapse milkar khushi hogi! 👇",
+                "Haan! JIET Universe yahan located hai:",
+                "Yeh JIET Universe ka pura address hai. Aur saath mein ek chhota sa map bhi hai aapki help ke liye! 🗺️",
+                "Absolutely! Humara campus, JIET Universe, yahan situated hai:"
+            ]
+        };
+
+        const closingPhrases = {
+            "english": [
+                "Hope this helps! Is there anything else I can assist you with today? 😊",
+                "Glad I could help! Feel free to ask if you have more questions. ✨",
+                "Let me know if you need anything else! Happy to assist. 👍",
+                "Is there anything else you'd like to know about JIET? I'm here to help! 🚀"
+            ],
+            "hindi": [
+                "आशा है यह आपकी मदद करेगा! क्या मैं आज आपकी किसी और चीज़ में मदद कर सकता हूँ? 😊",
+                "मुझे खुशी है कि मैं मदद कर सका! यदि आपके कोई और प्रश्न हैं तो बेझिझक पूछें। ✨",
+                "अगर आपको कुछ और चाहिए तो मुझे बताएं! मदद करने में खुशी होगी। 👍",
+                "क्या आप JIET के बारे में कुछ और जानना चाहेंगे? मैं मदद के लिए यहाँ हूँ! 🚀"
+            ],
+            "hinglish": [
+                "Hope this helps! Aur kuch puchna hai aaj? 😊",
+                "Khushi hui help karke! Aur questions hon toh puch lena. ✨",
+                "Bata dena agar kuch aur chahiye! Help karke khushi hogi. 👍",
+                "JIET ke bare mein aur kuch jaanna hai? Main yahan hu help ke liye! 🚀"
+            ]
+        };
+
+        const notFoundPhrases = {
+            "english": `Oops! I couldn't find an answer for that right now in my knowledge base. Maybe try rephrasing? You can also check out the <a href='https://www.jietjodhpur.ac.in/' target='_blank' class='text-indigo-600 font-semibold hover:underline'>official JIET website</a> for more info. 😊`,
+            "hindi": `क्षमा करें! मुझे अभी इस प्रश्न का उत्तर मेरे ज्ञानकोष में नहीं मिल पा रहा है। शायद आप इसे अलग तरीके से पूछ सकते हैं? अधिक जानकारी के लिए आप <a href='https://www.jietjodhpur.ac.in/' target='_blank' class='text-indigo-600 font-semibold hover:underline'>आधिकारिक JIET वेबसाइट</a> भी देख सकते हैं। 😊`,
+            "hinglish": `Oops! Mujhe iska answer abhi meri knowledge base mein nahi mila. Shayad aap isse rephrase karke puch sakte hain? Aur zyada info ke liye aap <a href='https://www.jietjodhpur.ac.in/' target='_blank' class='text-indigo-600 font-semibold hover:underline'>official JIET website</a> bhi check kar sakte hain. 😊`
+        };
+
+        const apiErrorPhrases = {
+            "english": `Oh no! It looks like something went wrong on my end. 😔 Please check your internet connection or try asking again in a bit. You can always visit the <a href='https://www.jietjodhpur.ac.in/' target='_blank' class='text-indigo-600 font-semibold hover:underline'>official JIET website</a> for details!`,
+            "hindi": `ओह नहीं! लगता है मेरे सिस्टम में कुछ गड़बड़ हो गई है। 😔 कृपया अपना इंटरनेट कनेक्शन जांचें या थोड़ी देर बाद फिर से पूछें। आप विवरण के लिए हमेशा <a href='https://www.jietjodhpur.ac.in/' target='_blank' class='text-indigo-600 font-semibold hover:underline'>आधिकारिक JIET वेबसाइट</a> पर जा सकते हैं!`,
+            "hinglish": `Oh no! Lagta hai mere side se kuch gadbad ho gayi hai. 😔 Please apna internet connection check karo ya thodi der baad phir se puchna. Aap details ke liye hamesha <a href='https://www.jietjodhpur.ac.in/' target='_blank' class='text-indigo-600 font-semibold hover:underline'>official JIET website</a> visit kar sakte hain!`
+        };
+
+        // Phrases for the course card
+        const courseCardPhrases = {
+            "english": {
+                "initial": "Hey there! We offer a variety of programs at JIET. To help you choose, here's an overview. What program are you interested in?",
+                "prompt": "You can type the name of the course or degree you're interested in, like 'B.Tech CSE' or 'MBA'.",
+                "contact": "Contact Details",
+                "know_more": "Know More",
+                "programs_list": `
+                    <p class="font-semibold text-slate-700 mt-3">We offer:</p>
+                    <ul class="list-disc list-inside text-sm text-slate-600 space-y-1 mt-2">
+                        <li>**Undergraduate (UG) Programs:** B.Tech, B.Des, MBBS, BBA, BCA, B.Sc (H&HA)</li>
+                        <li>**Postgraduate (PG) Programs:** MBA, MCA, M.Tech</li>
+                        <li>**Diploma & Doctoral Programs**</li>
+                    </ul>
+                `
+            },
+            "hindi": {
+                "initial": "नमस्ते! हम JIET में कई तरह के प्रोग्राम पेश करते हैं। आपकी पसंद में मदद करने के लिए, यहाँ एक अवलोकन है। आप किस प्रोग्राम में रुचि रखते हैं?",
+                "prompt": "आप जिस कोर्स या डिग्री में रुचि रखते हैं, उसका नाम टाइप कर सकते हैं, जैसे 'बी.टेक सीएसई' या 'एमबीए'।",
+                "contact": "संपर्क विवरण",
+                "know_more": "अधिक जानें",
+                "programs_list": `
+                    <p class="font-semibold text-slate-700 mt-3">हम प्रदान करते हैं:</p>
+                    <ul class="list-disc list-inside text-sm text-slate-600 space-y-1 mt-2">
+                        <li>**स्नातक (UG) प्रोग्राम:** बी.टेक, बी.डेस, एमबीबीएस, बीबीए, बीसीए, बी.एससी (एच एंड एचए)</li>
+                        <li>**स्नातकोत्तर (PG) प्रोग्राम:** एमबीए, एमसीए, एम.टेक</li>
+                        <li>**डिप्लोमा और डॉक्टरेट प्रोग्राम**</li>
+                    </ul>
+                `
+            },
+            "hinglish": {
+                "initial": "Hey there! Hum JIET mein bohut types ke programs offer karte hain. Choose karne mein help ke liye, yahan ek overview hai. Aap kis program mein interested ho?",
+                "prompt": "Aap us course ya degree ka naam type kar sakte ho jisme aap interested ho, jaise 'B.Tech CSE' ya 'MBA'.",
+                "contact": "Contact Details",
+                "know_more": "Know More",
+                "programs_list": `
+                    <p class="font-semibold text-slate-700 mt-3">Hum offer karte hain:</p>
+                    <ul class="list-disc list-inside text-sm text-slate-600 space-y-1 mt-2">
+                        <li>**Undergraduate (UG) Programs:** B.Tech, B.Des, MBBS, BBA, BCA, B.Sc (H&HA)</li>
+                        <li>**Postgraduate (PG) Programs:** MBA, MCA, M.Tech</li>
+                        <li>**Diploma & Doctoral Programs**</li>
+                    </ul>
+                `
+            }
+        };
+
+
+        /**
+         * Appends a message to the chat window.
+         * @param {string} sender - 'user' or 'bot'.
+         * @param {string} message - The message content (can be HTML).
+         */
+        function formatBotMessage(text) {
+            // Links to clickable <a> tags
+            text = text.replace(
+                /(https?:\/\/[^\s]+)/g,
+                '<a href="$1" target="_blank" class="text-indigo-600 hover:underline font-semibold break-all">$1</a>'
+            );
+
+            // **bold text** to <strong>
+            let html = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+            // Handle lists and paragraphs
+            const lines = html.split('\n');
+            let finalHtml = '';
+            let inList = false;
+
+            lines.forEach(line => {
+                const trimmedLine = line.trim();
+                if (trimmedLine.startsWith('* ') || trimmedLine.startsWith('- ')) {
+                    const listItemContent = trimmedLine.substring(2).trim();
+                    if (!inList) {
+                        finalHtml += '<ul>';
+                        inList = true;
+                    }
+                    finalHtml += `<li>${listItemContent}</li>`;
+                } else {
+                    if (inList) {
+                        finalHtml += '</ul>';
+                        inList = false;
+                    }
+                    if (trimmedLine.length > 0) {
+                        finalHtml += line.includes('<a href=') ? line : `<p>${line}</p>`;
+                    }
+                }
+            });
+
+            if (inList) {
+                finalHtml += '</ul>';
+            }
+
+            return finalHtml;
+        }
+
+        function addMessage(sender, message) {
+            const messageWrapper = document.createElement('div');
+            messageWrapper.classList.add('message', 'flex');
+
+            let messageHtml;
+
+            if (sender === 'user') {
+                messageWrapper.classList.add('justify-end');
+                messageHtml = `
+                    <div class="mr-3 bg-indigo-600 text-white p-3 rounded-lg rounded-tr-none shadow-md max-w-[85%]">
+                        <p>${message}</p>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <div class="h-8 w-8 rounded-full bg-slate-300 flex items-center justify-center text-slate-600 font-bold text-sm">U</div>
+                    </div>
+                `;
+            } else { // Bot message
+                let finalMessageHtml;
+
+                if (message.includes('<iframe') || message.includes('course-card')) { // Check for specific HTML structures
+                    finalMessageHtml = message;
+                } else {
+                    finalMessageHtml = formatBotMessage(message);
+                }
+
+                messageHtml = `
+                    <div class="flex-shrink-0">
+                        <div class="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold text-sm">AI</div>
+                    </div>
+                    <div class="ml-3 bg-white text-slate-800 p-3 rounded-lg rounded-tl-none shadow-md max-w-[85%]">
+                        ${finalMessageHtml}
+                    </div>
+                `;
+            }
+
+            messageWrapper.innerHTML = messageHtml;
+            chatMessages.appendChild(messageWrapper);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        /**
+         * Shows a typing indicator in the chat.
+         */
+        function showTypingIndicator() {
+            const indicatorHtml = `
+                <div id="typing-indicator" class="message flex">
+                    <div class="flex-shrink-0">
+                        <div class="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold text-sm">AI</div>
+                    </div>
+                    <div class="ml-3 bg-white text-slate-800 p-3 rounded-lg rounded-tl-none shadow-md flex items-center justify-center">
+                        <div class="dot-flashing"></div>
+                    </div>
+                </div>
+            `;
+            chatMessages.insertAdjacentHTML('beforeend', indicatorHtml);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        /**
+         * Removes the typing indicator from the chat.
+         */
+        function removeTypingIndicator() {
+            const typingIndicator = document.getElementById('typing-indicator');
+            if (typingIndicator) {
+                typingIndicator.remove();
+            }
+        }
+
+        /**
+         * Toggles the disabled state of the input and send button.
+         * @param {boolean} disabled - True to disable, false to enable.
+         */
+        function toggleInput(disabled) {
+            userInput.disabled = disabled;
+            sendButton.disabled = disabled;
+            if (disabled) {
+                sendButton.classList.add('opacity-50', 'cursor-not-allowed');
+                userInput.classList.add('bg-slate-100');
+            } else {
+                sendButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                userInput.classList.remove('bg-slate-100');
+            }
+        }
+
+        /**
+         * Generates and adds the course card to the chat.
+         * @param {string} lang - The detected language ('english', 'hindi', 'hinglish').
+         */
+        function showCourseCard(lang) {
+            const phrases = courseCardPhrases[lang];
+            const courseCardHtml = `
+                <div class="message flex">
+                    <div class="flex-shrink-0">
+                        <div class="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold text-sm">AI</div>
+                    </div>
+                    <div class="ml-3 bg-white text-slate-800 p-1 rounded-lg rounded-tl-none shadow-md max-w-[85%]">
+                        <div class="course-card">
+                            <img src="https://i.imgur.com/s6Wz8xV.png" alt="Courses Offered Banner" class="course-card-image">
+                            <div class="course-card-content">
+                                <p class="text-sm text-slate-700">${phrases.initial}</p>
+                                ${phrases.programs_list}
+                                <p class="text-xs text-slate-500 mt-4">${phrases.prompt}</p>
+                            </div>
+                            <div class="course-card-buttons">
+                                <a href="tel:+919773378530" class="contact-btn">${phrases.contact}</a>
+                                <a href="https://www.jietjodhpur.ac.in/academics/courses" target="_blank" class="know-more-btn">${phrases.know_more}</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            addMessage('bot', courseCardHtml);
+        }
+
+        /**
+         * Handles sending a message, calling the AI, and displaying the response.
+         */
+        async function handleSendMessage() {
+            const userMessage = userInput.value.trim();
+            if (userMessage === '') return;
+
+            addMessage('user', userMessage);
+            userInput.value = '';
+            toggleInput(true);
+            showTypingIndicator();
+
+            // Detect language of the user's message
+            const detectedLanguage = detectLanguage(userMessage);
+
+            // 🔍 Keyword check for "registration" or "admission" type queries
+            const lowerMessage = userMessage.toLowerCase();
+            const registrationKeywords = [
+                "registration", "register", "admission",
+                "form bharna", "form fill", "apply",
+                "apply karna hai", "admission lena hai",
+                "registration karwana hai", "form kaise bhare",
+                "form kab aayega", "form kaha bhare"
+            ];
+
+            if (registrationKeywords.some(keyword => lowerMessage.includes(keyword))) {
+                removeTypingIndicator();
+                const selectedAdmissionPhrase = getRandomElement(admissionPhrases[detectedLanguage]);
+                const responseText = `
+                    ${selectedAdmissionPhrase}
+                    👉 <a href="https://admissions.jietjodhpur.ac.in/" target="_blank" class="text-indigo-600 font-semibold hover:underline">https://admissions.jietjodhpur.ac.in/</a><br><br>
+                    ${getRandomElement(closingPhrases[detectedLanguage].map(p => p.replace("Hope this helps!", "If you need any help filling out the form, feel free to ask! 😊").replace("Glad I could help!", "Let me know if you have more questions about the process!")))}
+                `;
+                addMessage('bot', responseText);
+                toggleInput(false);
+                userInput.focus();
+                return; // ✅ Skip Gemini API call
+            }
+
+            const addressKeywords = ["address", "location", "map", "pata", "kahan hai", "kaha par hai"];
+
+            if (addressKeywords.some(keyword => lowerMessage.includes(keyword))) {
+                removeTypingIndicator();
+
+                // JIET के Latitude और Longitude
+                const lat = 26.1843;
+                const lng = 73.0033;
+
+                // Google Maps का एम्बbed URL
+                // Note: Direct embed URL should be used. This is a placeholder for demonstration.
+                // In a real application, you'd fetch a valid embed URL from Google Maps.
+                const mapEmbedUrl = `https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3579.522967007775!2d72.99955777421805!3d26.18432587707436!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39422e11a36484e5%3A0x6a0c5c4e7d9b9d3b!2sJodhpur%20Institute%20of%20Engineering%20&%20Technology%20(JIET)!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin`;
+
+
+                const selectedAddressPhrase = getRandomElement(addressPhrases[detectedLanguage]);
+                const responseText = `
+                    <p>${selectedAddressPhrase}</p>
+                    <p class="mt-1">NH-62, Jodhpur Pali Highway,<br>Village Mogra, Jodhpur - 342802</p>
+
+                    <div class="mt-3 border rounded-lg overflow-hidden shadow-md">
+                        <iframe
+                            width="100%"
+                            height="250"
+                            style="border:0;"
+                            loading="lazy"
+                            allowfullscreen
+                            src="${mapEmbedUrl}">
+                        </iframe>
+                    </div>
+                `;
+                addMessage('bot', responseText);
+                toggleInput(false);
+                userInput.focus();
+                return; // Skip Gemini API call
+            }
+
+            // New: Handle "Courses" related queries
+            const courseKeywords = [
+                "course", "courses", "program", "programs", "degree", "degrees",
+                "branch", "branches", "specialization", "specializations", "study",
+                "padhai", "konsa course", "course ke baare mein", "courses offered",
+                "degrees offered", "kis course mein admission", "kon se courses", "kya padhai hoti hai"
+            ];
+
+            if (courseKeywords.some(keyword => lowerMessage.includes(keyword))) {
+                removeTypingIndicator();
+                showCourseCard(detectedLanguage); // Show the interactive course card
+                toggleInput(false);
+                userInput.focus();
+                return; // Skip Gemini API call
+            }
+
+
+            chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
+
+            const systemInstructionText = `
+                You are the JIET Assistant, a friendly and helpful AI chatbot for the Jodhpur Institute of Engineering and Technology (JIET Universe).
+                Your main goal is to answer user questions accurately based *only* on the provided knowledge base.
+                Please use a **conversational, approachable, and friendly tone**, almost like talking to a friend.
+                Vary your phrasing and sentence structures to avoid sounding repetitive.
+                Feel free to use **emojis** where appropriate to add to the friendly tone.
+                The user has sent their query in **${detectedLanguage}**. Please respond in the same language:
+                - If the user types in **pure English**, respond in **pure English**.
+                - If the user types in **pure Hindi (Devanagari script)**, respond in **pure Hindi**.
+                - If the user types in **Hinglish (mix of Romanized Hindi and English words)**, respond in **Hinglish**.
+                
+                If the answer is not in the knowledge base, you MUST respond by politely stating you don't have the information in your current data, and then provide a direct, clickable link to the official JIET website: https://www.jietjodhpur.ac.in/.
+                Always try to end your response with a friendly closing or an encouraging question.
+
+                Here is the knowledge base:
+                ` + jietKnowledgeBase;
+
+            const payload = {
+                contents: chatHistory,
+                systemInstruction: {
+                    parts: [{ text: systemInstructionText }]
+                }
+            };
+
+            const apiKey = "AIzaSyANLNL6kdk6iFvSXv7LKgSGY1OQ4CLQuQ8"; // Canvas will provide the key automatically
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorBody = await response.text();
+                    console.error("API Error Response:", errorBody);
+                    throw new Error(`API request failed with status ${response.status}`);
+                }
+
+                const result = await response.json();
+                removeTypingIndicator();
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+
+                    const botResponse = result.candidates[0].content.parts[0].text;
+                    addMessage('bot', botResponse);
+                    chatHistory.push(result.candidates[0].content);
+                } else {
+                    addMessage('bot', notFoundPhrases[detectedLanguage]);
+                    console.error('Unexpected API response structure:', result);
+                }
+
+            } catch (error) {
+                removeTypingIndicator();
+                addMessage('bot', apiErrorPhrases[detectedLanguage]);
+                console.error('Error fetching from Gemini API:', error);
+            } finally {
+                toggleInput(false);
+                userInput.focus();
+            }
+        }
+
+        // --- Event Listeners ---
+        sendButton.addEventListener('click', handleSendMessage);
+        userInput.addEventListener('keypress', function (event) {
+            if (event.key === 'Enter') {
+                handleSendMessage();
+            }
+        });
+
+        // Initialize with a friendly welcome message
+        document.addEventListener('DOMContentLoaded', () => {
+            const initialWelcomeMessageElement = document.querySelector('#chat-messages .message p');
+            if (initialWelcomeMessageElement) {
+                // Determine a default language for the initial greeting, e.g., English or Hinglish
+                const defaultLang = "english"; // You can set this dynamically if needed based on user's browser language etc.
+                initialWelcomeMessageElement.innerHTML = getRandomElement(friendlyGreetings[defaultLang]) + ` I'm your JIET Assistant, here to help with questions about admissions, courses, fees, placements, and campus life at JIET Universe. How can I assist you today? ✨`;
+            }
+        });
+    </script>
+</body>
+
+</html>
