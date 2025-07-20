@@ -1593,8 +1593,358 @@ function detectLanguage(text) {
         addMessage("bot", cardHtml);
       }
 
+      // === IMPROVED INTENT-BASED KEYWORD MAPPING SYSTEM ===
+      
+      // Intent categories with priority (higher number = higher priority)
+      const intentMap = {
+        // High priority - specific queries
+        course_specific: {
+          priority: 10,
+          keywords: [
+            "b.tech branches", "btech branches", "b tech branches",
+            "mba specializations", "mba ka syllabus", "syllabus download",
+            "internal assessment", "timetable", "academic calendar"
+          ],
+          handler: handleSpecificCourseQueries
+        },
+        
+        // High priority - admission specific
+        admission_process: {
+          priority: 9,
+          keywords: [
+            "admission apply process", "admission process", "last date for application",
+            "admission form fees", "online admission form", "admission brochure",
+            "required documents", "counselling process", "direct admission",
+            "admission helpdesk", "college visit", "nri students", "admission start"
+          ],
+          handler: handleAdmissionQueries
+        },
+        
+        // High priority - eligibility specific  
+        eligibility: {
+          priority: 8,
+          keywords: [
+            "eligibility", "minimum percentage", "valid exams", "management quota",
+            "lateral entry", "reservation policy", "entrance test", "jee score"
+          ],
+          handler: handleEligibilityQueries
+        },
+        
+        // Medium priority - general categories
+        courses: {
+          priority: 7,
+          keywords: [
+            "course", "courses", "program", "programs", "degree", "degrees",
+            "branch", "branches", "specialization", "specializations", "study"
+          ],
+          handler: handleCourseQueries
+        },
+        
+        placements: {
+          priority: 6,
+          keywords: [
+            "placement", "placements", "salary", "package", "job", "jobs",
+            "company", "companies", "recruiters", "career"
+          ],
+          handler: handlePlacementQueries
+        },
+        
+        fees: {
+          priority: 5,
+          keywords: [
+            "fees", "fee", "cost", "scholarship", "scholarships", "charge", "charges"
+          ],
+          handler: handleFeesQueries
+        },
+        
+        // Lower priority - general info
+        college_info: {
+          priority: 4,
+          keywords: [
+            "affiliated", "aicte", "updates", "full form", "address", "location",
+            "railway station", "transport", "hostel", "mess menu", "food",
+            "canteen", "infrastructure"
+          ],
+          handler: handleCollegeInfoQueries
+        },
+        
+        registration: {
+          priority: 3,
+          keywords: [
+            "registration", "register", "form bharna", "form fill", "apply"
+          ],
+          handler: handleRegistrationQueries
+        }
+      };
+
       /**
-       * Handles sending a message, calling the AI, and displaying the response.
+       * Improved intent detection with priority-based matching
+       * @param {string} userMessage - The user's input message
+       * @returns {object|null} - Matched intent object or null
+       */
+      function detectIntent(userMessage) {
+        const lowerMessage = userMessage.toLowerCase();
+        let bestMatch = null;
+        let highestPriority = -1;
+        let maxMatches = 0;
+
+        // Check each intent category
+        for (const [intentName, intentConfig] of Object.entries(intentMap)) {
+          let matchCount = 0;
+          
+          // Count keyword matches for this intent
+          for (const keyword of intentConfig.keywords) {
+            if (lowerMessage.includes(keyword)) {
+              matchCount++;
+            }
+          }
+          
+          // Select best match based on priority and match count
+          if (matchCount > 0) {
+            const score = intentConfig.priority + (matchCount * 0.1); // Small bonus for multiple matches
+            if (score > highestPriority || (score === highestPriority && matchCount > maxMatches)) {
+              highestPriority = score;
+              maxMatches = matchCount;
+              bestMatch = { name: intentName, config: intentConfig, matches: matchCount };
+            }
+          }
+        }
+
+        return bestMatch;
+      }
+
+      /**
+       * Consolidated query handler - routes to specific handlers based on intent
+       * @param {string} userMessage - The user's input message
+       * @param {object} intent - Detected intent object
+       */
+      async function handleQueryByIntent(userMessage, intent) {
+        try {
+          await intent.config.handler(userMessage, intent);
+        } catch (error) {
+          console.error('Error handling intent:', error);
+          addMessage("bot", apiErrorPhrases[detectedUserLanguage]);
+        }
+      }
+
+      /**
+       * Handler for specific course-related queries
+       */
+      async function handleSpecificCourseQueries(userMessage, intent) {
+        const lowerMessage = userMessage.toLowerCase();
+        
+        // B.Tech branches
+        if (lowerMessage.includes("b.tech branches") || lowerMessage.includes("btech branches")) {
+          addMessage("bot", getRandomElement(btechBranchesPhrases[detectedUserLanguage]));
+          return;
+        }
+        
+        // MBA specializations
+        if (lowerMessage.includes("mba specializations") || lowerMessage.includes("mba ka syllabus")) {
+          if (lowerMessage.includes("syllabus")) {
+            addMessage("bot", getRandomElement(mbaSyllabusPhrases[detectedUserLanguage]));
+          } else {
+            addMessage("bot", getRandomElement(mbaSpecializationsPhrases[detectedUserLanguage]));
+          }
+          return;
+        }
+        
+        // Syllabus download
+        if (lowerMessage.includes("syllabus download")) {
+          addMessage("bot", getRandomElement(syllabusDownloadPhrases[detectedUserLanguage]));
+          return;
+        }
+        
+        // Internal assessment
+        if (lowerMessage.includes("internal assessment")) {
+          addMessage("bot", getRandomElement(internalAssessmentPhrases[detectedUserLanguage]));
+          return;
+        }
+        
+        // Timetable
+        if (lowerMessage.includes("timetable")) {
+          addMessage("bot", getRandomElement(timetablePhrases[detectedUserLanguage]));
+          return;
+        }
+        
+        // Academic calendar
+        if (lowerMessage.includes("academic calendar")) {
+          addMessage("bot", getRandomElement(academicCalendarPhrases[detectedUserLanguage]));
+          return;
+        }
+        
+        // Fallback to general course handler
+        await handleCourseQueries(userMessage, intent);
+      }
+
+      /**
+       * Handler for admission-related queries
+       */
+      async function handleAdmissionQueries(userMessage, intent) {
+        const lowerMessage = userMessage.toLowerCase();
+        
+        if (lowerMessage.includes("admission process")) {
+          addMessage("bot", getRandomElement(admissionProcessPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("last date")) {
+          addMessage("bot", getRandomElement(applicationLastDatePhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("form fees")) {
+          addMessage("bot", getRandomElement(admissionFormFeesPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("online admission form")) {
+          addMessage("bot", getRandomElement(onlineAdmissionFormLinkPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("brochure") || lowerMessage.includes("prospectus")) {
+          addMessage("bot", getRandomElement(admissionBrochurePhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("required documents")) {
+          addMessage("bot", getRandomElement(requiredDocumentsPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("counselling")) {
+          addMessage("bot", getRandomElement(counsellingProcessPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("direct admission")) {
+          addMessage("bot", getRandomElement(directAdmissionPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("helpdesk") || lowerMessage.includes("counselor")) {
+          addMessage("bot", getRandomElement(admissionHelpdeskContactPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("visit")) {
+          addMessage("bot", getRandomElement(collegeVisitAppointmentPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("nri")) {
+          addMessage("bot", getRandomElement(nriForeignStudentPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("start")) {
+          addMessage("bot", getRandomElement(admissionStartPhrases[detectedUserLanguage]));
+        } else {
+          // Default admission response
+          const selectedAdmissionPhrase = getRandomElement(admissionPhrases[detectedUserLanguage]);
+          const responseText = `
+            <p>${selectedAdmissionPhrase}</p>
+            <p><a href="https://admissions.jietjodhpur.ac.in/" target="_blank" class="text-indigo-600 font-semibold hover:underline">https://admissions.jietjodhpur.ac.in/</a></p>
+          `;
+          addMessage("bot", responseText);
+        }
+      }
+
+      /**
+       * Handler for eligibility-related queries
+       */
+      async function handleEligibilityQueries(userMessage, intent) {
+        const lowerMessage = userMessage.toLowerCase();
+        
+        if (lowerMessage.includes("general") && lowerMessage.includes("eligibility")) {
+          addMessage("bot", getRandomElement(generalEligibilityPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("btech") && lowerMessage.includes("percentage")) {
+          addMessage("bot", getRandomElement(btechMinPercentagePhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("mba") && lowerMessage.includes("exam")) {
+          addMessage("bot", getRandomElement(mbaValidExamsPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("management quota")) {
+          addMessage("bot", getRandomElement(managementQuotaEligibilityPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("lateral entry")) {
+          addMessage("bot", getRandomElement(lateralEntryPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("reservation")) {
+          addMessage("bot", getRandomElement(reservationPolicyPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("entrance test")) {
+          addMessage("bot", getRandomElement(entranceTestRequiredPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("jee score")) {
+          addMessage("bot", getRandomElement(jeeScoreAdmissionPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("cmat") || lowerMessage.includes("mat") || lowerMessage.includes("cat")) {
+          addMessage("bot", getRandomElement(mbaExamsAcceptedPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("reap") || lowerMessage.includes("rajasthan engineering")) {
+          addMessage("bot", getRandomElement(reapCounsellingSupportPhrases[detectedUserLanguage]));
+        } else {
+          addMessage("bot", getRandomElement(generalEligibilityPhrases[detectedUserLanguage]));
+        }
+      }
+
+      /**
+       * Handler for course-related queries
+       */
+      async function handleCourseQueries(userMessage, intent) {
+        // Show course card and quick reply chips
+        showInfoCard(detectedUserLanguage, jietCardData.courses[detectedUserLanguage]);
+        
+        const promptMessage = detectedUserLanguage === "hindi"
+          ? "किस प्रकार का कोर्स जानना चाहेंगे?"
+          : detectedUserLanguage === "hinglish"
+          ? "Kis type ka course jaanna chahoge?"
+          : "Which type of course would you like to know about?";
+          
+        showQuickReplyChips(mainCourseTypes, "course_type", promptMessage);
+        currentCourseSelectionStage = "awaiting_course_type";
+      }
+
+      /**
+       * Handler for placement-related queries
+       */
+      async function handlePlacementQueries(userMessage, intent) {
+        if (jietCardData.placements && jietCardData.placements[detectedUserLanguage]) {
+          showInfoCard(detectedUserLanguage, jietCardData.placements[detectedUserLanguage]);
+        } else {
+          addMessage("bot", notFoundPhrases[detectedUserLanguage]);
+        }
+      }
+
+      /**
+       * Handler for fees-related queries
+       */
+      async function handleFeesQueries(userMessage, intent) {
+        if (jietCardData.fees && jietCardData.fees[detectedUserLanguage]) {
+          showInfoCard(detectedUserLanguage, jietCardData.fees[detectedUserLanguage]);
+        } else {
+          addMessage("bot", notFoundPhrases[detectedUserLanguage]);
+        }
+      }
+
+      /**
+       * Handler for college info queries
+       */
+      async function handleCollegeInfoQueries(userMessage, intent) {
+        const lowerMessage = userMessage.toLowerCase();
+        
+        if (lowerMessage.includes("affiliated")) {
+          addMessage("bot", getRandomElement(affiliationPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("aicte")) {
+          addMessage("bot", getRandomElement(aictePhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("updates")) {
+          addMessage("bot", getRandomElement(updatesPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("full form")) {
+          addMessage("bot", getRandomElement(fullformPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("address") || lowerMessage.includes("location")) {
+          const selectedAddressPhrase = getRandomElement(addressPhrases[detectedUserLanguage]);
+          const responseText = `
+            <p>${selectedAddressPhrase}</p>
+            <p class="mt-1">JIET Universe, NH-62, Jodhpur Pali Highway,<br>Village Mogra, Jodhpur - 342802</p>
+            <p class="mt-3 text-sm text-slate-700">You can find us easily on Google Maps here:</p>
+            <p><a href="https://www.google.com/maps/search/?api=1&query=JIET+Universe+Jodhpur" target="_blank" class="text-indigo-600 font-semibold hover:underline">View on Google Maps 🗺️</a></p>
+          `;
+          addMessage("bot", responseText);
+        } else if (lowerMessage.includes("railway")) {
+          addMessage("bot", getRandomElement(railwayStationPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("transport")) {
+          addMessage("bot", getRandomElement(transportFacilitiesPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("hostel")) {
+          addMessage("bot", getRandomElement(hostelPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("mess menu")) {
+          addMessage("bot", getRandomElement(messMenuPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("food")) {
+          addMessage("bot", getRandomElement(foodTypePhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("canteen")) {
+          addMessage("bot", getRandomElement(canteenTimingPhrases[detectedUserLanguage]));
+        } else if (lowerMessage.includes("infrastructure")) {
+          addMessage("bot", getRandomElement(infrastructurePhrases[detectedUserLanguage]));
+        } else {
+          addMessage("bot", notFoundPhrases[detectedUserLanguage]);
+        }
+      }
+
+      /**
+       * Handler for registration queries
+       */
+      async function handleRegistrationQueries(userMessage, intent) {
+        const selectedAdmissionPhrase = getRandomElement(admissionPhrases[detectedUserLanguage]);
+        const responseText = `
+          <p>${selectedAdmissionPhrase}</p>
+          <p><a href="https://admissions.jietjodhpur.ac.in/" target="_blank" class="text-indigo-600 font-semibold hover:underline">https://admissions.jietjodhpur.ac.in/</a></p>
+          <p class="mt-2">${getRandomElement(closingPhrases[detectedUserLanguage])}</p>
+        `;
+        addMessage("bot", responseText);
+      }
+
+      /**
+       * Improved main message handler with intent-based routing
        */
       async function handleSendMessage() {
         const userMessage = userInput.value.trim();
@@ -1606,9 +1956,9 @@ function detectLanguage(text) {
         showTypingIndicator();
 
         // Detect language of the user's message
-        detectedUserLanguage = detectLanguage(userMessage); // Update global variable
+        detectedUserLanguage = detectLanguage(userMessage);
 
-        // Check if we are in a course selection flow (meaning user typed instead of clicking chip)
+        // Check if we are in a course selection flow
         if (currentCourseSelectionStage) {
           removeTypingIndicator();
           let guideMessage;
@@ -1625,1217 +1975,94 @@ function detectLanguage(text) {
           return;
         }
 
+        // Detect intent using improved system
+        const detectedIntent = detectIntent(userMessage);
+        
+        if (detectedIntent) {
+          removeTypingIndicator();
+          await handleQueryByIntent(userMessage, detectedIntent);
+          toggleInput(false);
+          userInput.focus();
+          return;
+        }
+
+        // Fallback to Gemini API if no intent matched
+        await handleGeminiAPIFallback(userMessage);
+      }
+
+      /**
+       * Fallback handler for Gemini API when no intent is matched
+       */
+      async function handleGeminiAPIFallback(userMessage) {
         const lowerMessage = userMessage.toLowerCase();
 
-        // --- Keyword Checks for Card Display ---
+        // Direct fallback to Gemini API for unmatched queries
+        chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
 
-        // Handle "Courses" related queries using the new card structure
-        const courseKeywords = [
-          "course",
-          "courses",
-          "program",
-          "programs",
-          "degree",
-          "degrees",
-          "branch",
-          "branches",
-          "specialization",
-          "specializations",
-          "study",
-          "padhai",
-          "konsa course",
-          "course ke baare mein",
-          "courses offered",
-          "degrees offered",
-          "kis course mein admission",
-          "kon se courses",
-          "kya padhai hoti hai",
-        ];
+        const systemInstructionText = `
+          You are the JIET Assistant, a friendly and helpful AI chatbot for the Jodhpur Institute of Engineering and Technology (JIET Universe).
+          Your main goal is to answer user questions accurately based *only* on the provided knowledge base.
+          Please use a **conversational, approachable, and friendly tone**, almost like talking to a friend.
+          Vary your phrasing and sentence structures to avoid sounding repetitive.
+          Feel free to use **emojis** where appropriate to add to the friendly tone.
+          The user has sent their query in **${detectedUserLanguage}**. Please respond in the same language:
+          - If the user types in **pure English**, respond in **pure English**.
+          - If the user types in **pure Hindi (Devanagari script)**, respond in **pure Hindi**.
+          - If the user types in **Hinglish (mix of Romanized Hindi and English words)**, respond in **Hinglish**.
 
-        if (courseKeywords.some((keyword) => lowerMessage.includes(keyword))) {
+          If the answer is not in the knowledge base, you MUST respond by politely stating you don't have the information in your current data, and then provide a direct, clickable link to the official JIET website: https://www.jietjodhpur.ac.in/.
+          Always try to end your response with a friendly closing or an encouraging question.
+
+          Here is the knowledge base:
+          ` + jietKnowledgeBase;
+
+        const payload = {
+          contents: chatHistory,
+          systemInstruction: {
+            parts: [{ text: systemInstructionText }],
+          },
+        };
+
+        const apiKey = "AIzaSyDvYU3qMbaHVmGLVtZZi9Bx6HqYld6aTP4";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+        try {
+          const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          if (!response.ok) {
+            const errorBody = await response.text();
+            console.error("API Error Response:", errorBody);
+            throw new Error(`API request failed with status ${response.status}`);
+          }
+
+          const result = await response.json();
           removeTypingIndicator();
-          showInfoCard(
-            detectedUserLanguage,
-            jietCardData.courses[detectedUserLanguage]
-          );
 
-          const promptMessage =
-            detectedUserLanguage === "hindi"
-              ? "किस प्रकार का कोर्स जानना चाहेंगे?"
-              : detectedUserLanguage === "hinglish"
-              ? "Kis type ka course jaanna chahoge?"
-              : "Which type of course would you like to know about?";
-          showQuickReplyChips(mainCourseTypes, "course_type", promptMessage);
-
-          currentCourseSelectionStage = "awaiting_course_type";
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // Handle "Placements" related queries using the new card structure
-        const placementKeywords = [
-          "placement",
-          "placements",
-          "salary",
-          "package",
-          "job",
-          "jobs",
-          "company",
-          "companies",
-          "recruiters",
-          "career",
-          "rojgar",
-          "nokri",
-          "placement kaise hota hai",
-          "placement statistics",
-          "average package",
-          "highest package",
-        ];
-
-        if (
-          placementKeywords.some((keyword) => lowerMessage.includes(keyword))
-        ) {
-          removeTypingIndicator();
-          if (
-            jietCardData.placements &&
-            jietCardData.placements[detectedUserLanguage]
-          ) {
-            showInfoCard(
-              detectedUserLanguage,
-              jietCardData.placements[detectedUserLanguage]
-            );
+          if (result.candidates && result.candidates.length > 0 && 
+              result.candidates[0].content && result.candidates[0].content.parts && 
+              result.candidates[0].content.parts.length > 0) {
+            const botResponse = result.candidates[0].content.parts[0].text;
+            addMessage("bot", botResponse);
+            chatHistory.push(result.candidates[0].content);
           } else {
             addMessage("bot", notFoundPhrases[detectedUserLanguage]);
+            console.error("Unexpected API response structure:", result);
           }
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // Handle "Fees" related queries using the new card structure
-        const feesKeywords = [
-          "fees",
-          "fee",
-          "cost",
-          "scholarship",
-          "scholarships",
-          "charge",
-          "charges",
-          "kitne paise",
-          "kitni fees hai",
-          "fee structure",
-          "fee jankari",
-        ];
-
-        if (feesKeywords.some((keyword) => lowerMessage.includes(keyword))) {
+        } catch (error) {
           removeTypingIndicator();
-          if (jietCardData.fees && jietCardData.fees[detectedUserLanguage]) {
-            showInfoCard(
-              detectedUserLanguage,
-              jietCardData.fees[detectedUserLanguage]
-            );
-          } else {
-            addMessage("bot", notFoundPhrases[detectedUserLanguage]);
-          }
+          addMessage("bot", apiErrorPhrases[detectedUserLanguage]);
+          console.error("Error fetching from Gemini API:", error);
+        } finally {
           toggleInput(false);
           userInput.focus();
-          return;
         }
+      }
 
-        // --- New Keyword Checks for Direct Text Responses --- ?????????????????????
-
-        // 1. JIET kis university se affiliated hai?
-        const affiliationKeywords = [
-          "affiliated",
-          "affiliation",
-          "university",
-          "kis university",
-          "university se affiliated",
-          "affiliation hai",
-          "संबद्ध",
-          "संबद्धता",
-          "विश्वविद्यालय",
-        ];
-        if (
-          affiliationKeywords.some((keyword) => lowerMessage.includes(keyword))
-        ) {
-          removeTypingIndicator();
-          addMessage(
-            "bot",
-            getRandomElement(affiliationPhrases[detectedUserLanguage])
-          );
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // 2. College AICTE approved hai?
-        const aicteKeywords = [
-          "aicte",
-          "approved",
-          "aicte approved",
-          "college approved",
-          "man्यता प्राप्त",
-          "मान्यता प्राप्त",
-          "अनुमोदित",
-          "स्वीकृत",
-        ];
-        if (aicteKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-          removeTypingIndicator();
-          addMessage(
-            "bot",
-            getRandomElement(aictePhrases[detectedUserLanguage])
-          );
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // 3. University se related updates?
-        const updatesKeywords = [
-          "updates",
-          "news",
-          "naya",
-          "kya chal raha hai",
-          "latest",
-          "recent activities",
-          "university updates",
-          "college news",
-          "नया क्या है",
-          "ताज़ा खबरें",
-          "गतिविधियाँ",
-        ];
-        if (updatesKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-          removeTypingIndicator();
-          addMessage(
-            "bot",
-            getRandomElement(updatesPhrases[detectedUserLanguage])
-          );
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // 4. JIET ka full form kya hai?
-        const fullformKeywords = [
-          "full form",
-          "purn roop",
-          "pura naam",
-          "jiet ka matlab",
-          "पूरा नाम",
-          "फुल फॉर्म",
-        ];
-        if (
-          fullformKeywords.some((keyword) => lowerMessage.includes(keyword)) &&
-          lowerMessage.includes("jiet")
-        ) {
-          removeTypingIndicator();
-          addMessage(
-            "bot",
-            getRandomElement(fullformPhrases[detectedUserLanguage])
-          );
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // 5. JIET kaha par situated hai?
-        const addressKeywords2 = [
-          "address",
-          "location",
-          "map",
-          "pata",
-          "kahan hai",
-          "kaha par hai",
-          "situated",
-          "स्थान",
-          "पता",
-          "स्थित",
-        ]; // Updated for Q5
-        if (
-          addressKeywords2.some((keyword) => lowerMessage.includes(keyword))
-        ) {
-          removeTypingIndicator();
-          const selectedAddressPhrase = getRandomElement(
-            addressPhrases[detectedUserLanguage]
-          );
-          const responseText = `
-                    <p>${selectedAddressPhrase}</p>
-                    <p class="mt-1">JIET Universe, NH-62, Jodhpur Pali Highway,<br>Village Mogra, Jodhpur - 342802</p>
-                    <p class="mt-3 text-sm text-slate-700">You can find us easily on Google Maps here:</p>
-                    <p><a href="https://www.google.com/maps/search/?api=1&query=JIET+Universe+Jodhpur" target="_blank" class="text-indigo-600 font-semibold hover:underline">View on Google Maps 🗺️</a></p>
-                `;
-          addMessage("bot", responseText);
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // 6. Nearest railway station kaun sa hai?
-        const railwayKeywords = [
-          "railway station",
-          "nearest station",
-          "train station",
-          "railway",
-          "station",
-          "sabse nazdeek station",
-          "रेलवे स्टेशन",
-          "निकटतम स्टेशन",
-          "ट्रेन स्टेशन",
-        ];
-        if (railwayKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-          removeTypingIndicator();
-          addMessage(
-            "bot",
-            getRandomElement(railwayStationPhrases[detectedUserLanguage])
-          );
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // 7. Transport facilities for students?
-        const transportKeywords = [
-          "transport",
-          "transport facilities",
-          "bus",
-          "buses",
-          "commute",
-          "transportation",
-          "parivahan",
-          "yatri suvidha",
-          "परिवहन",
-          "बसें",
-          "आवागमन",
-        ];
-        if (
-          transportKeywords.some((keyword) => lowerMessage.includes(keyword))
-        ) {
-          removeTypingIndicator();
-          addMessage(
-            "bot",
-            getRandomElement(transportFacilitiesPhrases[detectedUserLanguage])
-          );
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // --- New Keyword Checks for Direct Text Responses (Added for your questions) ---
-
-        // 11. Boys aur girls ke alag hostel hain kya?
-        const hostelKeywords = [
-          "hostel",
-          "hostels",
-          "boys hostel",
-          "girls hostel",
-          "separate hostel",
-          "alag hostel",
-          "hostel facility",
-          "hostel facilities",
-          "रहने की जगह",
-          "छात्रावास",
-          "हॉस्टल",
-          "अलग हॉस्टल",
-        ];
-        if (hostelKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-          removeTypingIndicator();
-          addMessage(
-            "bot",
-            getRandomElement(hostelPhrases[detectedUserLanguage])
-          );
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // 13. Mess menu weekly basis pe kaha milta hai?
-        const messMenuKeywords = [
-          "mess menu",
-          "menu weekly",
-          "weekly menu",
-          "mess food",
-          "food menu",
-          "khana menu",
-          "मेस मेन्यू",
-          "खाना मेन्यू",
-          "साप्ताहिक मेन्यू",
-        ];
-        if (
-          messMenuKeywords.some((keyword) => lowerMessage.includes(keyword))
-        ) {
-          removeTypingIndicator();
-          addMessage(
-            "bot",
-            getRandomElement(messMenuPhrases[detectedUserLanguage])
-          );
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // 14. Jain/veg food available hai kya?
-        const foodTypeKeywords = [
-          "jain food",
-          "veg food",
-          "vegetarian food",
-          "pure veg",
-          "jain khana",
-          "veg khana",
-          "शाकाहारी भोजन",
-          "जैन भोजन",
-          "प्योर वेज",
-        ];
-        if (
-          foodTypeKeywords.some((keyword) => lowerMessage.includes(keyword))
-        ) {
-          removeTypingIndicator();
-          addMessage(
-            "bot",
-            getRandomElement(foodTypePhrases[detectedUserLanguage])
-          );
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // 15. Canteen timing kya hai?
-        const canteenTimingKeywords = [
-          "canteen timing",
-          "canteen open",
-          "canteen hours",
-          "canteen time",
-          "कैंटीन",
-          "कैंटीन का समय",
-          "कैंटीन कब खुलती है",
-        ];
-        if (
-          canteenTimingKeywords.some((keyword) =>
-            lowerMessage.includes(keyword)
-          )
-        ) {
-          removeTypingIndicator();
-          addMessage(
-            "bot",
-            getRandomElement(canteenTimingPhrases[detectedUserLanguage])
-          );
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // 16. College ka infrastructure kaisa hai?
-        const infrastructureKeywords = [
-          "infrastructure",
-          "college infrastructure",
-          "campus infrastructure",
-          "facilities",
-          "campus facilities",
-          "college facilities",
-          "कैसा है",
-          "इंफ्रास्ट्रक्चर",
-          "सुविधाएं",
-          "कैंपस",
-        ];
-        if (
-          infrastructureKeywords.some((keyword) =>
-            lowerMessage.includes(keyword)
-          )
-        ) {
-          removeTypingIndicator();
-          addMessage(
-            "bot",
-            getRandomElement(infrastructurePhrases[detectedUserLanguage])
-          );
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // --- New Keyword Checks for Direct Text Responses (Added for your new questions) ---
-
-        // 1. Kaun se courses available hain? (General courses)
-        const generalCoursesKeywords = [
-          "kaun se courses",
-          "courses available",
-          "what courses",
-          "courses offered",
-          "konsa course",
-          "kya course hai",
-          "available courses",
-          "courses list",
-          "कौन से कोर्स",
-          "कोर्स उपलब्ध",
-          "क्या कोर्स",
-          "उपलब्ध कोर्स",
-          "कौन-कौन से पाठ्यक्रम",
-        ];
-        if (
-          generalCoursesKeywords.some((keyword) =>
-            lowerMessage.includes(keyword)
-          )
-        ) {
-          removeTypingIndicator();
-          addMessage(
-            "bot",
-            getRandomElement(generalCoursesPhrases[detectedUserLanguage])
-          );
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // 2 & 3. B.Tech ke kya kya branches available hain?
-        const btechBranchesKeywords = [
-          "b.tech branches",
-          "btech branches",
-          "b tech branches",
-          "b.tech ke kya kya branches",
-          "btech ke kaun kaun si branches",
-          "branches in b.tech",
-          "b.tech specializations",
-          "बी.टेक ब्रांच",
-          "बीटेक की ब्रांच",
-          "बी.टेक की कौन सी ब्रांच",
-          "बीटेक स्पेशलाइजेशन",
-        ];
-        if (
-          btechBranchesKeywords.some((keyword) =>
-            lowerMessage.includes(keyword)
-          )
-        ) {
-          removeTypingIndicator();
-          addMessage(
-            "bot",
-            getRandomElement(btechBranchesPhrases[detectedUserLanguage])
-          );
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // 4. MBA ke liye specializations kya milti hain?
-        const mbaSpecializationsKeywords = [
-          "mba specializations",
-          "mba ke liye specializations",
-          "mba specialisation",
-          "specializations in mba",
-          "mba kya kya specialization",
-          "एमबीए स्पेशलाइजेशन",
-          "एमबीए की स्पेशलाइजेशन",
-          "एमबीए में कौन सी स्पेशलाइजेशन",
-        ];
-        if (
-          mbaSpecializationsKeywords.some((keyword) =>
-            lowerMessage.includes(keyword)
-          )
-        ) {
-          removeTypingIndicator();
-          addMessage(
-            "bot",
-            getRandomElement(mbaSpecializationsPhrases[detectedUserLanguage])
-          );
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // 5. MBA ka syllabus kya hai?
-        const mbaSyllabusKeywords = [
-          "mba syllabus",
-          "mba ka syllabus",
-          "syllabus for mba",
-          "mba course content",
-          "एमबीए सिलेबस",
-          "एमबीए का सिलेबस",
-          "एमबीए पाठ्यक्रम",
-        ];
-        if (
-          mbaSyllabusKeywords.some((keyword) => lowerMessage.includes(keyword))
-        ) {
-          removeTypingIndicator();
-          addMessage(
-            "bot",
-            getRandomElement(mbaSyllabusPhrases[detectedUserLanguage])
-          );
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // 6. Kya college me BCA / BBA / M.Tech available hai?
-        const otherCoursesAvailabilityKeywords = [
-          "bca available",
-          "bba available",
-          "m.tech available",
-          "bca college",
-          "bba college",
-          "m.tech college",
-          "kya bca hai",
-          "kya bba hai",
-          "kya m.tech hai",
-          "क्या बीसीए उपलब्ध है",
-          "क्या बीबीए उपलब्ध है",
-          "क्या एम.टेक उपलब्ध है",
-        ];
-        if (
-          otherCoursesAvailabilityKeywords.some((keyword) =>
-            lowerMessage.includes(keyword)
-          )
-        ) {
-          removeTypingIndicator();
-          addMessage(
-            "bot",
-            getRandomElement(
-              otherCoursesAvailabilityPhrases[detectedUserLanguage]
-            )
-          );
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // 7 & 8. Courses ka duration kya hai? / Course duration aur mode (full-time/part-time) kya hai?
-        const courseDurationKeywords = [
-          "course duration",
-          "duration of courses",
-          "course ka duration",
-          "courses kitne saal ke hain",
-          "full-time part-time",
-          "mode of courses",
-          "कोर्स की अवधि",
-          "कोर्स कितने साल का",
-          "कोर्स का समय",
-          "अवधि और मोड",
-          "फुल टाइम पार्ट टाइम",
-        ];
-        if (
-          courseDurationKeywords.some((keyword) =>
-            lowerMessage.includes(keyword)
-          )
-        ) {
-          removeTypingIndicator();
-          addMessage(
-            "bot",
-            getRandomElement(courseDurationPhrases[detectedUserLanguage])
-          );
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // 9. Syllabus download link?
-        const syllabusDownloadKeywords = [
-          "syllabus download",
-          "syllabus link",
-          "download syllabus",
-          "syllabus kaha se download kare",
-          "syllabus download karna hai",
-          "सिलेबस डाउनलोड",
-          "सिलेबस लिंक",
-          "पाठ्यक्रम डाउनलोड",
-        ];
-        if (
-          syllabusDownloadKeywords.some((keyword) =>
-            lowerMessage.includes(keyword)
-          )
-        ) {
-          removeTypingIndicator();
-          addMessage(
-            "bot",
-            getRandomElement(syllabusDownloadPhrases[detectedUserLanguage])
-          );
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // 10. Internal assessment ka pattern kya hai?
-        const internalAssessmentKeywords = [
-          "internal assessment",
-          "assessment pattern",
-          "internal exam",
-          "evaluation pattern",
-          "internal marking",
-          "आंतरिक मूल्यांकन",
-          "असेसमेंट पैटर्न",
-          "इंटरनल एग्जाम",
-        ];
-        if (
-          internalAssessmentKeywords.some((keyword) =>
-            lowerMessage.includes(keyword)
-          )
-        ) {
-          removeTypingIndicator();
-          addMessage(
-            "bot",
-            getRandomElement(internalAssessmentPhrases[detectedUserLanguage])
-          );
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // 11. Semester timetable kaha milega?
-        const timetableKeywords = [
-          "semester timetable",
-          "class timetable",
-          "timetable kaha milega",
-          "time table",
-          "timetable college",
-          "semester schedule",
-          "सेमेस्टर टाइमटेबल",
-          "टाइम टेबल",
-          "कहाँ मिलेगा टाइम टेबल",
-        ];
-        if (
-          timetableKeywords.some((keyword) => lowerMessage.includes(keyword))
-        ) {
-          removeTypingIndicator();
-          addMessage(
-            "bot",
-            getRandomElement(timetablePhrases[detectedUserLanguage])
-          );
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // 12. Academic calendar download link?
-        const academicCalendarKeywords = [
-          "academic calendar",
-          "calendar link",
-          "download academic calendar",
-          "academic schedule",
-          "शैक्षणिक कैलेंडर",
-          "अकादमिक कैलेंडर",
-          "कैलेंडर डाउनलोड",
-        ];
-        if (
-          academicCalendarKeywords.some((keyword) =>
-            lowerMessage.includes(keyword)
-          )
-        ) {
-          removeTypingIndicator();
-          addMessage(
-            "bot",
-            getRandomElement(academicCalendarPhrases[detectedUserLanguage])
-          );
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // 13. Library ka timing kya hai?
-        const libraryTimingsKeywords = [
-          "library timing",
-          "library hours",
-          "library open",
-          "library time",
-          "पुस्तकालय का समय",
-          "लाइब्रेरी कब खुलती है",
-          "लाइब्रेरी टाइमिंग",
-        ];
-        if (
-          libraryTimingsKeywords.some((keyword) =>
-            lowerMessage.includes(keyword)
-          )
-        ) {
-          removeTypingIndicator();
-          addMessage(
-            "bot",
-            getRandomElement(libraryTimingsPhrases[detectedUserLanguage])
-          );
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // 14. Online journals access kaise karein?
-        const onlineJournalsKeywords = [
-          "online journals",
-          "e-journals",
-          "digital library",
-          "journals access",
-          "online resources",
-          "online books",
-          "ऑनलाइन जर्नल",
-          "ई-जर्नल",
-          "डिजिटल लाइब्रेरी",
-          "जर्नल एक्सेस",
-        ];
-        if (
-          onlineJournalsKeywords.some((keyword) =>
-            lowerMessage.includes(keyword)
-          )
-        ) {
-          removeTypingIndicator();
-          addMessage(
-            "bot",
-            getRandomElement(onlineJournalsPhrases[detectedUserLanguage])
-          );
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // 15. JIET me kaun-kaun se UG courses available hain?
-        const ugCoursesKeywords = [
-          "ug courses",
-          "undergraduate courses",
-          "ug programs",
-          "kaun se ug courses",
-          "ug college",
-          "यूजी कोर्स",
-          "अंडरग्रेजुएट कोर्स",
-          "यूजी पाठ्यक्रम",
-        ];
-        if (
-          ugCoursesKeywords.some((keyword) => lowerMessage.includes(keyword))
-        ) {
-          removeTypingIndicator();
-          addMessage(
-            "bot",
-            getRandomElement(ugCoursesPhrases[detectedUserLanguage])
-          );
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-
-        // --- New Keyword Checks for Direct Text Responses (Added for your new admissions questions) ---
-
-        // 1 & 2. Admission apply karne ka process kya hai? / Admission process kya hai?
-        const admissionProcessKeywords = [
-            "admission apply process", "admission process", "how to apply for admission",
-            "admission ka process", "admission kaise lein", "प्रवेश प्रक्रिया", "एडमिशन अप्लाई"
-        ];
-        if (admissionProcessKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(admissionProcessPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 3. Last date for application kya hai?
-        const applicationLastDateKeywords = [
-            "last date for application", "application last date", "admission last date",
-            "apply karne ki last date", "आवेदन की अंतिम तिथि", "अंतिम तिथि"
-        ];
-        if (applicationLastDateKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(applicationLastDatePhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 4. Admission form fees kitni hai?
-        const admissionFormFeesKeywords = [
-            "admission form fees", "application form fees", "form fees kitni hai",
-            "fees for admission form", "आवेदन शुल्क", "फॉर्म फीस"
-        ];
-        if (admissionFormFeesKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(admissionFormFeesPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 5 & 6. Kya online admission form available hai? / Online admission form ka link kya hai?
-        const onlineAdmissionFormLinkKeywords = [
-            "online admission form", "admission form link", "online form available",
-            "online application link", "ऑनलाइन एडमिशन फॉर्म", "एडमिशन फॉर्म लिंक"
-        ];
-        if (onlineAdmissionFormLinkKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(onlineAdmissionFormLinkPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 7 & 8. Admission brochure kaha se download karen? / Prospectus PDF dijiye.
-        const admissionBrochureKeywords = [
-            "admission brochure", "prospectus pdf", "brochure download", "college handbook",
-            "विवरणिका", "प्रॉस्पेक्टस", "हैंडबुक"
-        ];
-        if (admissionBrochureKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(admissionBrochurePhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 9. Required documents ki list kya hai?
-        const requiredDocumentsKeywords = [
-            "required documents", "documents needed for admission", "admission documents list",
-            "जरूरी दस्तावेज़", "आवश्यक दस्तावेज", "डॉक्यूमेंट्स क्या लगेंगे"
-        ];
-        if (requiredDocumentsKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(requiredDocumentsPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 10. Counselling process JIET me kaise hoti hai?
-        const counsellingProcessKeywords = [
-            "counselling process", "counseling kaise hoti hai", "reap counselling",
-            "काउंसलिंग प्रक्रिया", "रीप काउंसलिंग"
-        ];
-        if (counsellingProcessKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(counsellingProcessPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 11. Direct admission possible hai kya?
-        const directAdmissionKeywords = [
-            "direct admission", "management quota", "seedhi admission", "सीधा प्रवेश",
-            "डायरेक्ट एडमिशन"
-        ];
-        if (directAdmissionKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(directAdmissionPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 12 & 13. Admission helpdesk ka contact number kya hai? / Admission counselor se baat kaise karein?
-        const admissionHelpdeskContactKeywords = [
-            "admission helpdesk contact", "admission counselor number", "counsellor se baat",
-            "admission contact number", "एडमिशन हेल्पलाइन", "काउंसलर से बात"
-        ];
-        if (admissionHelpdeskContactKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(admissionHelpdeskContactPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 14 & 15. College visit ke liye appointment kaise lein? / Campus visit ke liye permission kaise milegi?
-        const collegeVisitAppointmentKeywords = [
-            "college visit appointment", "campus visit permission", "college dekhne jana hai",
-            "कैंपस विजिट", "कॉलेज विजिट"
-        ];
-        if (collegeVisitAppointmentKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(collegeVisitAppointmentPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 16, 17 & 18. Kya NRI students admission le sakte hain? / NRI quota seats available hain kya? / Foreign students ke liye separate helpdesk hai kya?
-        const nriForeignStudentKeywords = [
-            "nri students admission", "nri quota seats", "foreign students helpdesk",
-            "एनआरआई एडमिशन", "विदेशी छात्र", "फॉरेन स्टूडेंट्स"
-        ];
-        if (nriForeignStudentKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(nriForeignStudentPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 19. Admission kab se start hote hain?
-        const admissionStartKeywords = [
-            "admission kab se start", "when do admissions start", "admission start date",
-            "एडमिशन कब शुरू होते हैं", "प्रवेश कब से"
-        ];
-        if (admissionStartKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(admissionStartPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // --- New Keyword Checks for Direct Text Responses (Added for your new eligibility questions) ---
-
-        // 1. Admission ke liye eligibility kya hai?
-        const generalEligibilityKeywords = [
-            "admission eligibility", "eligibility for admission", "admission ke liye eligibility",
-            "प्रवेश पात्रता", "एडमिशन के लिए एलिजिबिलिटी"
-        ];
-        if (generalEligibilityKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(generalEligibilityPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 2. B.Tech ke liye minimum percentage kya chahiye?
-        const btechMinPercentageKeywords = [
-            "btech minimum percentage", "btech minimum marks", "btech ke liye percentage",
-            "बीटेक न्यूनतम प्रतिशत", "बीटेक के लिए परसेंटेज"
-        ];
-        if (btechMinPercentageKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(btechMinPercentagePhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 3. MBA me admission ke liye kaunsa exam valid hai?
-        const mbaValidExamsKeywords = [
-            "mba valid exams", "mba entrance exams", "mba ke liye exam", "mba kaunsa exam",
-            "एमबीए वैध परीक्षा", "एमबीए एंट्रेंस एग्जाम"
-        ];
-        if (mbaValidExamsKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(mbaValidExamsPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 4. Management quota ke liye kya eligibility hai?
-        const managementQuotaEligibilityKeywords = [
-            "management quota eligibility", "management quota ke liye eligibility", "management quota norms",
-            "प्रबंधन कोटा पात्रता", "मैनेजमेंट कोटा एलिजिबिलिटी"
-        ];
-        if (managementQuotaEligibilityKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(managementQuotaEligibilityPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 5. Lateral entry (Diploma to B.Tech) available hai kya?
-        const lateralEntryKeywords = [
-            "lateral entry", "diploma to btech", "lateral entry available", "लैटरल एंट्री",
-            "डिप्लोमा टू बीटेक"
-        ];
-        if (lateralEntryKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(lateralEntryPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 6. Reservation policy kya hai?
-        const reservationPolicyKeywords = [
-            "reservation policy", "quota policy", "reservation rules", "आरक्षण नीति",
-            "रिजर्वेशन पॉलिसी"
-        ];
-        if (reservationPolicyKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(reservationPolicyPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 7. Entrance test lena padta hai kya?
-        const entranceTestRequiredKeywords = [
-            "entrance test required", "entrance exam mandatory", "entrance test lena padta hai",
-            "प्रवेश परीक्षा अनिवार्य", "एंट्रेंस टेस्ट जरूरी"
-        ];
-        if (entranceTestRequiredKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(entranceTestRequiredPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 8. JEE score ke through admission possible hai?
-        const jeeScoreAdmissionKeywords = [
-            "jee score admission", "jee main admission", "jee ke through admission",
-            "जेईई स्कोर एडमिशन", "जेईई मेन से एडमिशन"
-        ];
-        if (jeeScoreAdmissionKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(jeeScoreAdmissionPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 9. CMAT / MAT / CAT valid hain for MBA?
-        const mbaExamsAcceptedKeywords = [
-            "cmat valid for mba", "mat valid for mba", "cat valid for mba",
-            "cmat mat cat valid", "एमबीए के लिए कैट मैट सीएमएटी"
-        ];
-        if (mbaExamsAcceptedKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(mbaExamsAcceptedPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 10. Rajasthan engineering counselling support available hai kya?
-        const reapCounsellingSupportKeywords = [
-            "rajasthan engineering counselling support", "reap counselling support", "reap guidance",
-            "राजस्थान इंजीनियरिंग काउंसलिंग", "रीप काउंसलिंग सपोर्ट"
-        ];
-        if (reapCounsellingSupportKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(reapCounsellingSupportPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // --- Existing Keyword Checks (for direct text responses) ---
-
-        const registrationKeywords = [
-          "registration",
-          "register",
-          "admission",
-          "form bharna",
-          "form fill",
-          "apply",
-          "apply karna hai",
-          "admission lena hai",
-          "registration karwana hai",
-          "form kaise bhare",
-          "form kab aayega",
-          "form kaha bhare",
-        ];
-
-        if (
-          registrationKeywords.some((keyword) => lowerMessage.includes(keyword))
-        ) {
-          removeTypingIndicator();
-          const selectedAdmissionPhrase = getRandomElement(
-            admissionPhrases[detectedUserLanguage]
-          );
-          const responseText = `
-                    <p>${selectedAdmissionPhrase}</p>
-                    <p><a href="https://admissions.jietjodhpur.ac.in/" target="_blank" class="text-indigo-600 font-semibold hover:underline">https://admissions.jietjodhpur.ac.in/</a></p>
-                    <p class="mt-2">${getRandomElement(
-                      closingPhrases[detectedUserLanguage].map((p) =>
-                        p
-                          .replace(
-                            "Hope this helps!",
-                            "If you need any help filling out the form, feel free to ask! 😊"
-                          )
-                          .replace(
-                            "Glad I could help!",
-                            "Let me know if you have more questions about the process!"
-                          )
-                      )
-                    )}</p>
-                `;
-          addMessage("bot", responseText);
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        const addressKeywords = [
-          "address",
-          "location",
-          "map",
-          "pata",
-          "kahan hai",
-          "kaha par hai",
-        ];
-
-        if (addressKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-          removeTypingIndicator();
-
-          const selectedAddressPhrase = getRandomElement(
-            addressPhrases[detectedUserLanguage]
-          );
-          const responseText = `
-                    <p>${selectedAddressPhrase}</p>
-                    <p class="mt-1">JIET Universe, NH-62, Jodhpur Pali Highway,<br>Village Mogra, Jodhpur - 342802</p>
-                    <p class="mt-3 text-sm text-slate-700">You can find us easily on Google Maps here:</p>
-                    <p><a href="https://www.google.com/maps/search/?api=1&query=JIET+Universe+Jodhpur" target="_blank" class="text-indigo-600 font-semibold hover:underline">View on Google Maps 🗺️</a></p>
-                `;
-          addMessage("bot", responseText);
-          toggleInput(false);
-          userInput.focus();
-          return;
-        }
-
-        // --- Fallback to Gemini API if no specific keyword match ---
+      // --- Event Listeners ---
         chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
 
         const systemInstructionText =
