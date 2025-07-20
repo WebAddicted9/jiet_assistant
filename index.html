@@ -2405,357 +2405,450 @@ function detectLanguage(text) {
         }
 
 
-        // --- New Keyword Checks for Direct Text Responses (Added for your new admissions questions) ---
+        // --- Advanced Intent Classification for Admission Queries ---
+        
+        /**
+         * Improved intent classification function that prioritizes specific matches over general ones
+         * Returns the most specific intent match for admission-related queries
+         */
+        function classifyAdmissionIntent(message) {
+            const lowerMsg = message.toLowerCase();
+            
+            // Define intent patterns in order of specificity (most specific first)
+            const intentPatterns = [
+                // Very specific multi-word patterns first
+                {
+                    intent: "admission_form_link",
+                    patterns: [
+                        "online admission form link", "admission form ka link", "admission form link", 
+                        "online application link", "form ka link", "ऑनलाइन एडमिशन फॉर्म लिंक", 
+                        "एडमिशन फॉर्म लिंक", "online form link"
+                    ],
+                    weight: 10
+                },
+                {
+                    intent: "admission_form_fees",
+                    patterns: [
+                        "admission form fees", "application form fees", "form fees kitni hai",
+                        "fees for admission form", "form ki fees", "आवेदन शुल्क", "फॉर्म फीस",
+                        "admission form kitni fees"
+                    ],
+                    weight: 9
+                },
+                {
+                    intent: "online_admission_form",
+                    patterns: [
+                        "online admission form", "online form available", "online application",
+                        "ऑनलाइन एडमिशन फॉर्म", "online admission", "admission form online"
+                    ],
+                    weight: 8
+                },
+                {
+                    intent: "admission_last_date",
+                    patterns: [
+                        "last date for application", "application last date", "admission last date",
+                        "apply karne ki last date", "आवेदन की अंतिम तिथि", "अंतिम तिथि",
+                        "deadline for admission", "admission deadline"
+                    ],
+                    weight: 8
+                },
+                {
+                    intent: "admission_process",
+                    patterns: [
+                        "admission apply process", "admission process", "how to apply for admission",
+                        "admission ka process", "admission kaise lein", "प्रवेश प्रक्रिया", 
+                        "एडमिशन अप्लाई", "admission procedure", "apply kaise kare"
+                    ],
+                    weight: 7
+                },
+                // General patterns last
+                {
+                    intent: "general_admission",
+                    patterns: [
+                        "admission", "प्रवेश", "एडमिशन"
+                    ],
+                    weight: 1
+                }
+            ];
+            
+            let bestMatch = null;
+            let highestScore = 0;
+            
+            for (const intentDef of intentPatterns) {
+                for (const pattern of intentDef.patterns) {
+                    if (lowerMsg.includes(pattern)) {
+                        // Calculate score: pattern length * weight (longer, more specific patterns get higher scores)
+                        const score = pattern.length * intentDef.weight;
+                        if (score > highestScore) {
+                            highestScore = score;
+                            bestMatch = intentDef.intent;
+                        }
+                    }
+                }
+            }
+            
+            return bestMatch;
+        }
 
-        // 1 & 2. Admission apply karne ka process kya hai? / Admission process kya hai?
-        const admissionProcessKeywords = [
-            "admission apply process", "admission process", "how to apply for admission",
-            "admission ka process", "admission kaise lein", "प्रवेश प्रक्रिया", "एडमिशन अप्लाई"
-        ];
-        if (admissionProcessKeywords.some((keyword) => lowerMessage.includes(keyword))) {
+        // Use the improved intent classification for admission queries
+        const admissionIntent = classifyAdmissionIntent(lowerMessage);
+        
+        if (admissionIntent) {
             removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(admissionProcessPhrases[detectedUserLanguage])
-            );
+            
+            switch (admissionIntent) {
+                case "admission_form_link":
+                    addMessage("bot", getRandomElement(onlineAdmissionFormLinkPhrases[detectedUserLanguage]));
+                    break;
+                    
+                case "admission_form_fees":
+                    addMessage("bot", getRandomElement(admissionFormFeesPhrases[detectedUserLanguage]));
+                    break;
+                    
+                case "online_admission_form":
+                    addMessage("bot", getRandomElement(onlineAdmissionFormLinkPhrases[detectedUserLanguage]));
+                    break;
+                    
+                case "admission_last_date":
+                    addMessage("bot", getRandomElement(applicationLastDatePhrases[detectedUserLanguage]));
+                    break;
+                    
+                case "admission_process":
+                    addMessage("bot", getRandomElement(admissionProcessPhrases[detectedUserLanguage]));
+                    break;
+                    
+                case "general_admission":
+                    // For general admission queries, provide a comprehensive response with options
+                    const generalAdmissionResponse = detectedUserLanguage === "hindi" 
+                        ? "एडमिशन के बारे में आप क्या जानना चाहते हैं? आप पूछ सकते हैं:\n• एडमिशन प्रक्रिया\n• एडमिशन फॉर्म लिंक\n• फॉर्म फीस\n• आवेदन की अंतिम तिथि\n• आवश्यक दस्तावेज़"
+                        : detectedUserLanguage === "hinglish"
+                        ? "Admission ke baare mein aap kya jaanna chahte hain? Aap puch sakte hain:\n• Admission process\n• Admission form link\n• Form fees\n• Last date\n• Required documents"
+                        : "What would you like to know about admissions? You can ask about:\n• Admission process\n• Admission form link\n• Form fees\n• Application deadline\n• Required documents";
+                    addMessage("bot", generalAdmissionResponse);
+                    break;
+            }
+            
             toggleInput(false);
             userInput.focus();
             return;
         }
 
-        // 3. Last date for application kya hai?
-        const applicationLastDateKeywords = [
-            "last date for application", "application last date", "admission last date",
-            "apply karne ki last date", "आवेदन की अंतिम तिथि", "अंतिम तिथि"
-        ];
-        if (applicationLastDateKeywords.some((keyword) => lowerMessage.includes(keyword))) {
+        // --- Extended Intent Classification for Other Admission Queries ---
+        
+        /**
+         * Extended intent classification for additional admission-related queries
+         */
+        function classifyExtendedAdmissionIntent(message) {
+            const lowerMsg = message.toLowerCase();
+            
+            // Define intent patterns for other admission queries
+            const extendedIntentPatterns = [
+                {
+                    intent: "admission_helpdesk_contact",
+                    patterns: [
+                        "admission helpdesk contact", "admission counselor number", "counsellor se baat",
+                        "admission contact number", "admission helpdesk", "एडमिशन हेल्पलाइन", 
+                        "काउंसलर से बात", "admission counselor contact"
+                    ],
+                    weight: 9
+                },
+                {
+                    intent: "direct_admission",
+                    patterns: [
+                        "direct admission", "management quota", "seedhi admission", "सीधा प्रवेश",
+                        "डायरेक्ट एडमिशन", "direct admission possible"
+                    ],
+                    weight: 8
+                },
+                {
+                    intent: "nri_foreign_students",
+                    patterns: [
+                        "nri students admission", "nri quota seats", "foreign students helpdesk",
+                        "एनआरआई एडमिशन", "विदेशी छात्र", "फॉरेन स्टूडेंट्स", "nri admission"
+                    ],
+                    weight: 8
+                },
+                {
+                    intent: "college_visit_appointment",
+                    patterns: [
+                        "college visit appointment", "campus visit permission", "college dekhne jana hai",
+                        "कैंपस विजिट", "कॉलेज विजिट", "campus visit"
+                    ],
+                    weight: 8
+                },
+                {
+                    intent: "counselling_process",
+                    patterns: [
+                        "counselling process", "counseling kaise hoti hai", "reap counselling",
+                        "काउंसलिंग प्रक्रिया", "रीप काउंसलिंग", "counseling process"
+                    ],
+                    weight: 7
+                },
+                {
+                    intent: "admission_start_date",
+                    patterns: [
+                        "admission kab se start", "when do admissions start", "admission start date",
+                        "एडमिशन कब शुरू होते हैं", "प्रवेश कब से", "admission start"
+                    ],
+                    weight: 7
+                },
+                {
+                    intent: "required_documents",
+                    patterns: [
+                        "required documents", "documents needed for admission", "admission documents list",
+                        "जरूरी दस्तावेज़", "आवश्यक दस्तावेज", "डॉक्यूमेंट्स क्या लगेंगे", "documents required"
+                    ],
+                    weight: 7
+                },
+                {
+                    intent: "admission_brochure",
+                    patterns: [
+                        "admission brochure", "prospectus pdf", "brochure download", "college handbook",
+                        "विवरणिका", "प्रॉस्पेक्टस", "हैंडबुक", "admission prospectus"
+                    ],
+                    weight: 7
+                }
+            ];
+            
+            let bestMatch = null;
+            let highestScore = 0;
+            
+            for (const intentDef of extendedIntentPatterns) {
+                for (const pattern of intentDef.patterns) {
+                    if (lowerMsg.includes(pattern)) {
+                        const score = pattern.length * intentDef.weight;
+                        if (score > highestScore) {
+                            highestScore = score;
+                            bestMatch = intentDef.intent;
+                        }
+                    }
+                }
+            }
+            
+            return bestMatch;
+        }
+
+        // Use the extended intent classification for other admission queries
+        const extendedAdmissionIntent = classifyExtendedAdmissionIntent(lowerMessage);
+        
+        if (extendedAdmissionIntent) {
             removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(applicationLastDatePhrases[detectedUserLanguage])
-            );
+            
+            switch (extendedAdmissionIntent) {
+                case "admission_brochure":
+                    addMessage("bot", getRandomElement(admissionBrochurePhrases[detectedUserLanguage]));
+                    break;
+                    
+                case "required_documents":
+                    addMessage("bot", getRandomElement(requiredDocumentsPhrases[detectedUserLanguage]));
+                    break;
+                    
+                case "counselling_process":
+                    addMessage("bot", getRandomElement(counsellingProcessPhrases[detectedUserLanguage]));
+                    break;
+                    
+                case "direct_admission":
+                    addMessage("bot", getRandomElement(directAdmissionPhrases[detectedUserLanguage]));
+                    break;
+                    
+                case "admission_helpdesk_contact":
+                    addMessage("bot", getRandomElement(admissionHelpdeskContactPhrases[detectedUserLanguage]));
+                    break;
+                    
+                case "college_visit_appointment":
+                    addMessage("bot", getRandomElement(collegeVisitAppointmentPhrases[detectedUserLanguage]));
+                    break;
+                    
+                case "nri_foreign_students":
+                    addMessage("bot", getRandomElement(nriForeignStudentPhrases[detectedUserLanguage]));
+                    break;
+                    
+                case "admission_start_date":
+                    addMessage("bot", getRandomElement(admissionStartPhrases[detectedUserLanguage]));
+                    break;
+            }
+            
             toggleInput(false);
             userInput.focus();
             return;
         }
 
-        // 4. Admission form fees kitni hai?
-        const admissionFormFeesKeywords = [
-            "admission form fees", "application form fees", "form fees kitni hai",
-            "fees for admission form", "आवेदन शुल्क", "फॉर्म फीस"
-        ];
-        if (admissionFormFeesKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(admissionFormFeesPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
+        // --- Advanced Intent Classification for Eligibility and Policy Queries ---
+        
+        /**
+         * Advanced intent classification for eligibility and policy related queries
+         */
+        function classifyEligibilityIntent(message) {
+            const lowerMsg = message.toLowerCase();
+            
+            // Define intent patterns for eligibility queries
+            const eligibilityIntentPatterns = [
+                {
+                    intent: "management_quota_eligibility",
+                    patterns: [
+                        "management quota eligibility", "management quota ke liye eligibility", 
+                        "management quota norms", "प्रबंधन कोटा पात्रता", "मैनेजमेंट कोटा एलिजिबिलिटी"
+                    ],
+                    weight: 10
+                },
+                {
+                    intent: "btech_minimum_percentage",
+                    patterns: [
+                        "btech minimum percentage", "btech minimum marks", "btech ke liye percentage",
+                        "बीटेक न्यूनतम प्रतिशत", "बीटेक के लिए परसेंटेज", "btech eligibility percentage"
+                    ],
+                    weight: 10
+                },
+                {
+                    intent: "mba_valid_exams",
+                    patterns: [
+                        "mba valid exams", "mba entrance exams", "mba ke liye exam", "mba kaunsa exam",
+                        "एमबीए वैध परीक्षा", "एमबीए एंट्रेंस एग्जाम", "mba admission exam"
+                    ],
+                    weight: 9
+                },
+                {
+                    intent: "mba_exams_accepted",
+                    patterns: [
+                        "cmat valid for mba", "mat valid for mba", "cat valid for mba",
+                        "cmat mat cat valid", "एमबीए के लिए कैट मैट सीएमएटी", "cmat mat cat accepted"
+                    ],
+                    weight: 10
+                },
+                {
+                    intent: "jee_score_admission",
+                    patterns: [
+                        "jee score admission", "jee main admission", "jee ke through admission",
+                        "जेईई स्कोर एडमिशन", "जेईई मेन से एडमिशन", "jee based admission"
+                    ],
+                    weight: 9
+                },
+                {
+                    intent: "entrance_test_required",
+                    patterns: [
+                        "entrance test required", "entrance exam mandatory", "entrance test lena padta hai",
+                        "प्रवेश परीक्षा अनिवार्य", "एंट्रेंस टेस्ट जरूरी", "entrance test mandatory"
+                    ],
+                    weight: 9
+                },
+                {
+                    intent: "lateral_entry",
+                    patterns: [
+                        "lateral entry", "diploma to btech", "lateral entry available", "लैटरल एंट्री",
+                        "डिप्लोमा टू बीटेक", "lateral admission"
+                    ],
+                    weight: 8
+                },
+                {
+                    intent: "reservation_policy",
+                    patterns: [
+                        "reservation policy", "quota policy", "reservation rules", "आरक्षण नीति",
+                        "रिजर्वेशन पॉलिसी", "reservation system"
+                    ],
+                    weight: 8
+                },
+                {
+                    intent: "reap_counselling_support",
+                    patterns: [
+                        "rajasthan engineering counselling support", "reap counselling support", "reap guidance",
+                        "राजस्थान इंजीनियरिंग काउंसलिंग", "रीप काउंसलिंग सपोर्ट", "reap support"
+                    ],
+                    weight: 10
+                },
+                {
+                    intent: "general_admission_eligibility",
+                    patterns: [
+                        "admission eligibility", "eligibility for admission", "admission ke liye eligibility",
+                        "प्रवेश पात्रता", "एडमिशन के लिए एलिजिबिलिटी", "general eligibility"
+                    ],
+                    weight: 7
+                },
+                // Catch general eligibility queries
+                {
+                    intent: "general_eligibility",
+                    patterns: [
+                        "eligibility", "पात्रता", "एलिजिबिलिटी"
+                    ],
+                    weight: 2
+                }
+            ];
+            
+            let bestMatch = null;
+            let highestScore = 0;
+            
+            for (const intentDef of eligibilityIntentPatterns) {
+                for (const pattern of intentDef.patterns) {
+                    if (lowerMsg.includes(pattern)) {
+                        const score = pattern.length * intentDef.weight;
+                        if (score > highestScore) {
+                            highestScore = score;
+                            bestMatch = intentDef.intent;
+                        }
+                    }
+                }
+            }
+            
+            return bestMatch;
         }
 
-        // 5 & 6. Kya online admission form available hai? / Online admission form ka link kya hai?
-        const onlineAdmissionFormLinkKeywords = [
-            "online admission form", "admission form link", "online form available",
-            "online application link", "ऑनलाइन एडमिशन फॉर्म", "एडमिशन फॉर्म लिंक"
-        ];
-        if (onlineAdmissionFormLinkKeywords.some((keyword) => lowerMessage.includes(keyword))) {
+        // Use the advanced intent classification for eligibility queries
+        const eligibilityIntent = classifyEligibilityIntent(lowerMessage);
+        
+        if (eligibilityIntent) {
             removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(onlineAdmissionFormLinkPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 7 & 8. Admission brochure kaha se download karen? / Prospectus PDF dijiye.
-        const admissionBrochureKeywords = [
-            "admission brochure", "prospectus pdf", "brochure download", "college handbook",
-            "विवरणिका", "प्रॉस्पेक्टस", "हैंडबुक"
-        ];
-        if (admissionBrochureKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(admissionBrochurePhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 9. Required documents ki list kya hai?
-        const requiredDocumentsKeywords = [
-            "required documents", "documents needed for admission", "admission documents list",
-            "जरूरी दस्तावेज़", "आवश्यक दस्तावेज", "डॉक्यूमेंट्स क्या लगेंगे"
-        ];
-        if (requiredDocumentsKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(requiredDocumentsPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 10. Counselling process JIET me kaise hoti hai?
-        const counsellingProcessKeywords = [
-            "counselling process", "counseling kaise hoti hai", "reap counselling",
-            "काउंसलिंग प्रक्रिया", "रीप काउंसलिंग"
-        ];
-        if (counsellingProcessKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(counsellingProcessPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 11. Direct admission possible hai kya?
-        const directAdmissionKeywords = [
-            "direct admission", "management quota", "seedhi admission", "सीधा प्रवेश",
-            "डायरेक्ट एडमिशन"
-        ];
-        if (directAdmissionKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(directAdmissionPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 12 & 13. Admission helpdesk ka contact number kya hai? / Admission counselor se baat kaise karein?
-        const admissionHelpdeskContactKeywords = [
-            "admission helpdesk contact", "admission counselor number", "counsellor se baat",
-            "admission contact number", "एडमिशन हेल्पलाइन", "काउंसलर से बात"
-        ];
-        if (admissionHelpdeskContactKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(admissionHelpdeskContactPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 14 & 15. College visit ke liye appointment kaise lein? / Campus visit ke liye permission kaise milegi?
-        const collegeVisitAppointmentKeywords = [
-            "college visit appointment", "campus visit permission", "college dekhne jana hai",
-            "कैंपस विजिट", "कॉलेज विजिट"
-        ];
-        if (collegeVisitAppointmentKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(collegeVisitAppointmentPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 16, 17 & 18. Kya NRI students admission le sakte hain? / NRI quota seats available hain kya? / Foreign students ke liye separate helpdesk hai kya?
-        const nriForeignStudentKeywords = [
-            "nri students admission", "nri quota seats", "foreign students helpdesk",
-            "एनआरआई एडमिशन", "विदेशी छात्र", "फॉरेन स्टूडेंट्स"
-        ];
-        if (nriForeignStudentKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(nriForeignStudentPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 19. Admission kab se start hote hain?
-        const admissionStartKeywords = [
-            "admission kab se start", "when do admissions start", "admission start date",
-            "एडमिशन कब शुरू होते हैं", "प्रवेश कब से"
-        ];
-        if (admissionStartKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(admissionStartPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // --- New Keyword Checks for Direct Text Responses (Added for your new eligibility questions) ---
-
-        // 1. Admission ke liye eligibility kya hai?
-        const generalEligibilityKeywords = [
-            "admission eligibility", "eligibility for admission", "admission ke liye eligibility",
-            "प्रवेश पात्रता", "एडमिशन के लिए एलिजिबिलिटी"
-        ];
-        if (generalEligibilityKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(generalEligibilityPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 2. B.Tech ke liye minimum percentage kya chahiye?
-        const btechMinPercentageKeywords = [
-            "btech minimum percentage", "btech minimum marks", "btech ke liye percentage",
-            "बीटेक न्यूनतम प्रतिशत", "बीटेक के लिए परसेंटेज"
-        ];
-        if (btechMinPercentageKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(btechMinPercentagePhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 3. MBA me admission ke liye kaunsa exam valid hai?
-        const mbaValidExamsKeywords = [
-            "mba valid exams", "mba entrance exams", "mba ke liye exam", "mba kaunsa exam",
-            "एमबीए वैध परीक्षा", "एमबीए एंट्रेंस एग्जाम"
-        ];
-        if (mbaValidExamsKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(mbaValidExamsPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 4. Management quota ke liye kya eligibility hai?
-        const managementQuotaEligibilityKeywords = [
-            "management quota eligibility", "management quota ke liye eligibility", "management quota norms",
-            "प्रबंधन कोटा पात्रता", "मैनेजमेंट कोटा एलिजिबिलिटी"
-        ];
-        if (managementQuotaEligibilityKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(managementQuotaEligibilityPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 5. Lateral entry (Diploma to B.Tech) available hai kya?
-        const lateralEntryKeywords = [
-            "lateral entry", "diploma to btech", "lateral entry available", "लैटरल एंट्री",
-            "डिप्लोमा टू बीटेक"
-        ];
-        if (lateralEntryKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(lateralEntryPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 6. Reservation policy kya hai?
-        const reservationPolicyKeywords = [
-            "reservation policy", "quota policy", "reservation rules", "आरक्षण नीति",
-            "रिजर्वेशन पॉलिसी"
-        ];
-        if (reservationPolicyKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(reservationPolicyPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 7. Entrance test lena padta hai kya?
-        const entranceTestRequiredKeywords = [
-            "entrance test required", "entrance exam mandatory", "entrance test lena padta hai",
-            "प्रवेश परीक्षा अनिवार्य", "एंट्रेंस टेस्ट जरूरी"
-        ];
-        if (entranceTestRequiredKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(entranceTestRequiredPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 8. JEE score ke through admission possible hai?
-        const jeeScoreAdmissionKeywords = [
-            "jee score admission", "jee main admission", "jee ke through admission",
-            "जेईई स्कोर एडमिशन", "जेईई मेन से एडमिशन"
-        ];
-        if (jeeScoreAdmissionKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(jeeScoreAdmissionPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 9. CMAT / MAT / CAT valid hain for MBA?
-        const mbaExamsAcceptedKeywords = [
-            "cmat valid for mba", "mat valid for mba", "cat valid for mba",
-            "cmat mat cat valid", "एमबीए के लिए कैट मैट सीएमएटी"
-        ];
-        if (mbaExamsAcceptedKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(mbaExamsAcceptedPhrases[detectedUserLanguage])
-            );
-            toggleInput(false);
-            userInput.focus();
-            return;
-        }
-
-        // 10. Rajasthan engineering counselling support available hai kya?
-        const reapCounsellingSupportKeywords = [
-            "rajasthan engineering counselling support", "reap counselling support", "reap guidance",
-            "राजस्थान इंजीनियरिंग काउंसलिंग", "रीप काउंसलिंग सपोर्ट"
-        ];
-        if (reapCounsellingSupportKeywords.some((keyword) => lowerMessage.includes(keyword))) {
-            removeTypingIndicator();
-            addMessage(
-                "bot",
-                getRandomElement(reapCounsellingSupportPhrases[detectedUserLanguage])
-            );
+            
+            switch (eligibilityIntent) {
+                case "general_admission_eligibility":
+                    addMessage("bot", getRandomElement(generalEligibilityPhrases[detectedUserLanguage]));
+                    break;
+                    
+                case "btech_minimum_percentage":
+                    addMessage("bot", getRandomElement(btechMinPercentagePhrases[detectedUserLanguage]));
+                    break;
+                    
+                case "mba_valid_exams":
+                    addMessage("bot", getRandomElement(mbaValidExamsPhrases[detectedUserLanguage]));
+                    break;
+                    
+                case "management_quota_eligibility":
+                    addMessage("bot", getRandomElement(managementQuotaEligibilityPhrases[detectedUserLanguage]));
+                    break;
+                    
+                case "lateral_entry":
+                    addMessage("bot", getRandomElement(lateralEntryPhrases[detectedUserLanguage]));
+                    break;
+                    
+                case "reservation_policy":
+                    addMessage("bot", getRandomElement(reservationPolicyPhrases[detectedUserLanguage]));
+                    break;
+                    
+                case "entrance_test_required":
+                    addMessage("bot", getRandomElement(entranceTestRequiredPhrases[detectedUserLanguage]));
+                    break;
+                    
+                case "jee_score_admission":
+                    addMessage("bot", getRandomElement(jeeScoreAdmissionPhrases[detectedUserLanguage]));
+                    break;
+                    
+                case "mba_exams_accepted":
+                    addMessage("bot", getRandomElement(mbaExamsAcceptedPhrases[detectedUserLanguage]));
+                    break;
+                    
+                case "reap_counselling_support":
+                    addMessage("bot", getRandomElement(reapCounsellingSupportPhrases[detectedUserLanguage]));
+                    break;
+                    
+                case "general_eligibility":
+                    // For general eligibility queries, provide options
+                    const generalEligibilityResponse = detectedUserLanguage === "hindi" 
+                        ? "पात्रता के बारे में आप क्या जानना चाहते हैं? आप पूछ सकते हैं:\n• बीटेक के लिए न्यूनतम प्रतिशत\n• एमबीए प्रवेश परीक्षा\n• लेटरल एंट्री\n• आरक्षण नीति\n• प्रवेश परीक्षा की आवश्यकता"
+                        : detectedUserLanguage === "hinglish"
+                        ? "Eligibility ke baare mein aap kya jaanna chahte hain? Aap puch sakte hain:\n• B.Tech minimum percentage\n• MBA entrance exams\n• Lateral entry\n• Reservation policy\n• Entrance test requirement"
+                        : "What would you like to know about eligibility? You can ask about:\n• B.Tech minimum percentage\n• MBA entrance exams\n• Lateral entry\n• Reservation policy\n• Entrance test requirements";
+                    addMessage("bot", generalEligibilityResponse);
+                    break;
+            }
+            
             toggleInput(false);
             userInput.focus();
             return;
@@ -2766,12 +2859,9 @@ function detectLanguage(text) {
         const registrationKeywords = [
           "registration",
           "register",
-          "admission",
           "form bharna",
           "form fill",
-          "apply",
           "apply karna hai",
-          "admission lena hai",
           "registration karwana hai",
           "form kaise bhare",
           "form kab aayega",
